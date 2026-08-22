@@ -53,6 +53,17 @@ def outcome_suffix(ticker: str, event_ticker: str) -> str:
     return ticker[len(event_ticker) + 1:]
 
 
+def kalshi_url(event_ticker: str) -> str:
+    """Kalshi market page URL. Verified live: https://kalshi.com/markets/{series}/{event}
+    (both lowercased) redirects to the canonical page with its human slug filled
+    in -- the middle slug segment isn't required. `series` is the event ticker
+    with its trailing -XX segment (year/suffix) stripped, e.g.
+    'SENATENE-26' -> series 'senatene'. Confirmed this also holds for the
+    KX-prefixed and CONTROLS-2026 tickers."""
+    series = event_ticker.rsplit("-", 1)[0].lower()
+    return f"https://kalshi.com/markets/{series}/{event_ticker.lower()}"
+
+
 def is_primary_pending(market) -> bool:
     name = (market.get("yes_sub_title") or "").strip()
     return bool(GENERIC_CANDIDATE_RE.match(name))
@@ -109,13 +120,14 @@ def build_race(state, race_type, event_ticker, markets):
         "repCandidate": rep_market.get("yes_sub_title", "Republican Party"),
         "demPrimaryPending": is_primary_pending(dem_market),
         "repPrimaryPending": is_primary_pending(rep_market),
+        "kalshiUrl": kalshi_url(event_ticker),
     }
     if other_tickers:
         race["otherTickers"] = other_tickers
     return race
 
 
-def stale_race(state, previous_races_by_state, previous_fetched_at):
+def stale_race(state, previous_races_by_state, previous_fetched_at, event_ticker):
     prev = previous_races_by_state.get(state)
     if prev is None:
         return None
@@ -124,6 +136,9 @@ def stale_race(state, previous_races_by_state, previous_fetched_at):
     # Keep the original staleSince if this race was already stale last run
     # (so it reflects when it last had good data, not the most recent retry).
     stale["staleSince"] = prev.get("staleSince") or previous_fetched_at or "unknown"
+    # Recompute rather than trust the carried-forward value, in case this
+    # field didn't exist yet in the previous snapshot.
+    stale["kalshiUrl"] = kalshi_url(event_ticker)
     return stale
 
 
@@ -134,12 +149,14 @@ def build_controls_market(discovery, previous):
         if previous and previous.get("controlsMarket"):
             fallback = dict(previous["controlsMarket"])
             fallback["fetchError"] = "CONTROLS-2026 fetch failed; carrying forward last-known values"
+            fallback["kalshiUrl"] = kalshi_url(CONTROLS_EVENT_TICKER)
             return fallback
         return {
             "eventTicker": CONTROLS_EVENT_TICKER,
             "demProbability": 0.5,
             "repProbability": 0.5,
             "fetchError": "CONTROLS-2026 fetch failed and no previous snapshot was available",
+            "kalshiUrl": kalshi_url(CONTROLS_EVENT_TICKER),
         }
 
     dem_probability = rep_probability = None
@@ -155,6 +172,7 @@ def build_controls_market(discovery, previous):
         "demProbability": dem_probability,
         "repProbability": rep_probability,
         "fetchError": None,
+        "kalshiUrl": kalshi_url(CONTROLS_EVENT_TICKER),
     }
 
 
@@ -177,7 +195,7 @@ def main():
 
         race = build_race(state, race_type, event_ticker, markets) if markets else None
         if race is None:
-            fallback = stale_race(state, previous_races_by_state, previous.get("fetchedAt") if previous else None)
+            fallback = stale_race(state, previous_races_by_state, previous.get("fetchedAt") if previous else None, event_ticker)
             failed_states.append(state)
             if fallback is not None:
                 races.append(fallback)

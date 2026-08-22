@@ -26,6 +26,8 @@ Three components on one page, ported from `design_handoff_senate_tracker`'s desi
 
 Both the spectrum bar and the map show tooltips on hover (candidate names, odds, "(primary TBD)" markers where a party's primary hasn't resolved yet, independent candidates polling above 10%). Colors, spacing, and thresholds follow `design_handoff_senate_tracker/README.md`'s design tokens.
 
+Every contested-race segment in the spectrum bar (wide and narrow layouts alike) links out to that race's actual Kalshi market page. On desktop, hover previews the tooltip and a click opens the link in a new tab. On touch devices (detected via `(hover: none), (pointer: coarse)`) there's no hover, so the first tap on a segment shows the preview instead of navigating; a second tap on that same segment follows the link. Tapping elsewhere dismisses the open preview. The solid D/R blocks aren't linked — no single market backs an aggregate of 34/31 seats.
+
 `app.js` fetches `live-senate-data.json` on load; the page shows a loading state until that resolves and an error state if the fetch fails.
 
 ## Rebuild logic
@@ -33,7 +35,7 @@ Both the spectrum bar and the map show tooltips on hover (candidate names, odds,
 `web/live-senate-data.json` is a generated artifact, not hand-edited. To refresh it:
 
 1. Something keeps `latest_kalshi_discovery.json` up to date with a fresh pull from Kalshi (same shape as the historical `kalshi_discovery_*_results.json` dumps: a dict of `event_ticker` → raw market objects). That part isn't owned by this repo's web layer — see `script.py`.
-2. Run `python3 scripts/build_live_data.py`. It reads `latest_kalshi_discovery.json` plus the checked-in `scripts/event_ticker_map.json`, normalizes each race's outcome prices to sum to 1.0, derives `demPrimaryPending`/`repPrimaryPending` per race, and writes `web/live-senate-data.json`. If a race's data is missing or unusable, it carries forward that race's last-known-good values from the previous `live-senate-data.json` (flagged `stale`/`staleSince`) rather than ever showing 0% — and lists the state in `failedStates`.
+2. Run `python3 scripts/build_live_data.py`. It reads `latest_kalshi_discovery.json` plus the checked-in `scripts/event_ticker_map.json`, normalizes each race's outcome prices to sum to 1.0, derives `demPrimaryPending`/`repPrimaryPending` per race, and computes each race's `kalshiUrl` (`https://kalshi.com/markets/{series}/{event}`, series being the event ticker with its trailing `-XX` stripped — verified live, the human slug segment isn't required for Kalshi's redirect to resolve). It then writes `web/live-senate-data.json`. If a race's data is missing or unusable, it carries forward that race's last-known-good values from the previous `live-senate-data.json` (flagged `stale`/`staleSince`) rather than ever showing 0% — and lists the state in `failedStates`.
 3. Nothing else needs to change — `web/`'s HTML/CSS/JS never touch the data pipeline. Serve `web/` as a static directory (any static host works; no build step) and each run of step 2 is the only thing that needs to happen to pick up new odds.
 
 Run it locally with e.g. `python3 -m http.server` from inside `web/`.

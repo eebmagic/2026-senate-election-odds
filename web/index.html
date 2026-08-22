@@ -44,7 +44,7 @@
   .solid-block.dem { background: #2f5aa8; }
   .solid-block.rep { background: #b3372c; }
   .contested-wrap-wide { height: 100%; display: flex; border-left: 1px solid rgba(250,248,244,0.5); box-sizing: border-box; }
-  .seg-wide { position: relative; flex: 1 1 0%; height: 100%; border-right: 1px solid rgba(250,248,244,0.5); box-sizing: border-box; cursor: pointer; color: #000; }
+  .seg-wide { position: relative; flex: 1 1 0%; height: 100%; border-right: 1px solid rgba(250,248,244,0.5); box-sizing: border-box; cursor: pointer; color: #000; text-decoration: none; }
   .seg-label-stack { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); display: flex; flex-direction: column; align-items: center; gap: 2px; width: 100%; }
   .seg-state { font-size: 11px; font-weight: 700; letter-spacing: 0.02em; text-align: center; }
   .seg-pct { font-size: 9px; font-weight: 600; text-align: center; }
@@ -68,7 +68,7 @@
   .solid-block-narrow.dem { background: #2f5aa8; }
   .solid-block-narrow.rep { background: #b3372c; }
   .contested-wrap-narrow { width: 100%; display: flex; flex-direction: column; border-top: 1px solid rgba(250,248,244,0.5); box-sizing: border-box; }
-  .seg-narrow { position: relative; flex: 1 1 0%; width: 100%; border-bottom: 1px solid rgba(250,248,244,0.5); box-sizing: border-box; cursor: pointer; color: #000; display: flex; align-items: center; justify-content: center; gap: 5px; }
+  .seg-narrow { position: relative; flex: 1 1 0%; width: 100%; border-bottom: 1px solid rgba(250,248,244,0.5); box-sizing: border-box; cursor: pointer; color: #000; text-decoration: none; display: flex; align-items: center; justify-content: center; gap: 5px; }
   .seg-narrow .seg-state { font-size: 10px; }
   .ind-mark-v { position: absolute; top: 0; bottom: 0; left: 0; width: 3px; background: #c98a2c; }
   .pending-mark-v { position: absolute; top: 0; bottom: 0; right: 0; width: 5px; background: #faf8f4; }
@@ -87,6 +87,7 @@
   .tooltip .title { font-weight: 700; font-size: 13.5px; margin-bottom: 3px; white-space: nowrap; }
   .tooltip .row { display: flex; justify-content: space-between; gap: 14px; font-variant-numeric: tabular-nums; white-space: nowrap; }
   .tooltip .row .value { color: #cfcac0; }
+  .tooltip .hint { margin-top: 6px; padding-top: 6px; border-top: 1px solid rgba(250,248,244,0.25); font-size: 11px; color: #9a958c; white-space: nowrap; }
 
   /* Map */
   .map-section-caption { margin-bottom: 14px; }

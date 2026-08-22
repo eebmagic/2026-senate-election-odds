@@ -1,10 +1,11 @@
 {
-  "fetchedAt": "2026-08-22T20:15:47Z",
+  "fetchedAt": "2026-08-22T21:26:15Z",
   "controlsMarket": {
     "eventTicker": "CONTROLS-2026",
     "demProbability": 0.46,
     "repProbability": 0.54,
-    "fetchError": null
+    "fetchError": null,
+    "kalshiUrl": "https://kalshi.com/markets/controls/controls-2026"
   },
   "races": [
     {
@@ -15,7 +16,8 @@
       "demCandidate": "Democratic party",
       "repCandidate": "Republican party",
       "demPrimaryPending": true,
-      "repPrimaryPending": true
+      "repPrimaryPending": true,
+      "kalshiUrl": "https://kalshi.com/markets/senateak/senateak-26"
     },
     {
       "state": "AL",
@@ -25,7 +27,8 @@
       "demCandidate": "Everett Wess",
       "repCandidate": "Barry Moore",
       "demPrimaryPending": false,
-      "repPrimaryPending": false
+      "repPrimaryPending": false,
+      "kalshiUrl": "https://kalshi.com/markets/senateal/senateal-26"
     },
     {
       "state": "AR",
@@ -35,7 +38,8 @@
       "demCandidate": "Hallie Shoffner",
       "repCandidate": "Tom Cotton",
       "demPrimaryPending": false,
-      "repPrimaryPending": false
+      "repPrimaryPending": false,
+      "kalshiUrl": "https://kalshi.com/markets/senatear/senatear-26"
     },
     {
       "state": "CO",
@@ -45,7 +49,8 @@
       "demCandidate": "John Hickenlooper",
       "repCandidate": "Mark Baisley",
       "demPrimaryPending": false,
-      "repPrimaryPending": false
+      "repPrimaryPending": false,
+      "kalshiUrl": "https://kalshi.com/markets/senateco/senateco-26"
     },
     {
       "state": "DE",
@@ -55,7 +60,8 @@
       "demCandidate": "Democratic party",
       "repCandidate": "Republican party",
       "demPrimaryPending": true,
-      "repPrimaryPending": true
+      "repPrimaryPending": true,
+      "kalshiUrl": "https://kalshi.com/markets/senatede/senatede-26"
     },
     {
       "state": "FL",
@@ -65,7 +71,8 @@
       "demCandidate": "Angie Nixon",
       "repCandidate": "Ashley Moody",
       "demPrimaryPending": false,
-      "repPrimaryPending": false
+      "repPrimaryPending": false,
+      "kalshiUrl": "https://kalshi.com/markets/senatefls/senatefls-26"
     },
     {
       "state": "GA",
@@ -75,7 +82,8 @@
       "demCandidate": "Jon Ossoff",
       "repCandidate": "Mike Collins",
       "demPrimaryPending": false,
-      "repPrimaryPending": false
+      "repPrimaryPending": false,
+      "kalshiUrl": "https://kalshi.com/markets/senatega/senatega-26"
     },
     {
       "state": "IA",
@@ -85,7 +93,8 @@
       "demCandidate": "Josh Turek",
       "repCandidate": "Ashley Hinson",
       "demPrimaryPending": false,
-      "repPrimaryPending": false
+      "repPrimaryPending": false,
+      "kalshiUrl": "https://kalshi.com/markets/senateia/senateia-26"
     },
     {
       "state": "ID",
@@ -96,6 +105,7 @@
       "repCandidate": "Jim Risch",
       "demPrimaryPending": false,
       "repPrimaryPending": false,
+      "kalshiUrl": "https://kalshi.com/markets/senateid/senateid-26",
       "otherTickers": [
         {
           "candidate": "Todd Achilles",
@@ -112,7 +122,8 @@
       "demCandidate": "Juliana Stratton",
       "repCandidate": "Don Tracy",
       "demPrimaryPending": false,
-      "repPrimaryPending": false
+      "repPrimaryPending": false,
+      "kalshiUrl": "https://kalshi.com/markets/senateil/senateil-26"
     },
     {
       "state": "KS",
@@ -122,7 +133,8 @@
       "demCandidate": "Adam Hamilton",
       "repCandidate": "Roger Marshall",
       "demPrimaryPending": false,
-      "repPrimaryPending": false
+      "repPrimaryPending": false,
+      "kalshiUrl": "https://kalshi.com/markets/senateks/senateks-26"
     },
     {
       "state": "KY",
@@ -132,7 +144,8 @@
       "demCandidate": "Charles Booker",
       "repCandidate": "Andy Barr",
       "demPrimaryPending": false,
-      "repPrimaryPending": false
+      "repPrimaryPending": false,
+      "kalshiUrl": "https://kalshi.com/markets/senatela/senatela-26"
     },
     {
       "state": "LA",
@@ -142,7 +155,8 @@
       "demCandidate": "Jamie Davis",
       "repCandidate": "Julia Letlow",
       "demPrimaryPending": false,
-      "repPrimaryPending": false
+      "repPrimaryPending": false,
+      "kalshiUrl": "https://kalshi.com/markets/kxsenatela/kxsenatela-26nov"
     },
     {
       "state": "MA",
@@ -152,7 +166,8 @@
       "demCandidate": "Democratic party",
       "repCandidate": "Republican party",
       "demPrimaryPending": true,
-      "repPrimaryPending": true
+      "repPrimaryPending": true,
+      "kalshiUrl": "https://kalshi.com/markets/senatema/senatema-26"
     },
     {
       "state": "ME",
@@ -162,7 +177,8 @@
       "demCandidate": "Troy Jackson",
       "repCandidate": "Susan Collins",
       "demPrimaryPending": false,
-      "repPrimaryPending": false
+      "repPrimaryPending": false,
+      "kalshiUrl": "https://kalshi.com/markets/senateme/senateme-26"
     },
     {
       "state": "MI",
@@ -172,7 +188,8 @@
       "demCandidate": "Abdul El-Sayed",
       "repCandidate": "Mike Rogers",
       "demPrimaryPending": false,
-      "repPrimaryPending": false
+      "repPrimaryPending": false,
+      "kalshiUrl": "https://kalshi.com/markets/senatemi/senatemi-26"
     },
     {
       "state": "MN",
@@ -182,7 +199,8 @@
       "demCandidate": "Peggy Flanagan",
       "repCandidate": "Michele Tafoya",
       "demPrimaryPending": false,
-      "repPrimaryPending": false
+      "repPrimaryPending": false,
+      "kalshiUrl": "https://kalshi.com/markets/senatemn/senatemn-26"
     },
     {
       "state": "MS",
@@ -192,7 +210,8 @@
       "demCandidate": "Scott Colom",
       "repCandidate": "Cindy Hyde-Smith",
       "demPrimaryPending": false,
-      "repPrimaryPending": false
+      "repPrimaryPending": false,
+      "kalshiUrl": "https://kalshi.com/markets/senatems/senatems-26"
     },
     {
       "state": "MT",
@@ -203,6 +222,7 @@
       "repCandidate": "Kurt Alme",
       "demPrimaryPending": false,
       "repPrimaryPending": false,
+      "kalshiUrl": "https://kalshi.com/markets/senatemt/senatemt-26",
       "otherTickers": [
         {
           "candidate": "Seth Bodnar",
@@ -219,7 +239,8 @@
       "demCandidate": "Roy Cooper",
       "repCandidate": "Michael Whatley",
       "demPrimaryPending": false,
-      "repPrimaryPending": false
+      "repPrimaryPending": false,
+      "kalshiUrl": "https://kalshi.com/markets/senatenc/senatenc-26"
     },
     {
       "state": "NE",
@@ -230,6 +251,7 @@
       "repCandidate": "Pete Ricketts",
       "demPrimaryPending": false,
       "repPrimaryPending": false,
+      "kalshiUrl": "https://kalshi.com/markets/senatene/senatene-26",
       "otherTickers": [
         {
           "candidate": "Dan Osborn",
@@ -246,7 +268,8 @@
       "demCandidate": "Democratic party",
       "repCandidate": "Republican party",
       "demPrimaryPending": true,
-      "repPrimaryPending": true
+      "repPrimaryPending": true,
+      "kalshiUrl": "https://kalshi.com/markets/senatenh/senatenh-26"
     },
     {
       "state": "NJ",
@@ -256,7 +279,8 @@
       "demCandidate": "Cory Booker",
       "repCandidate": "Justin Murphy",
       "demPrimaryPending": false,
-      "repPrimaryPending": false
+      "repPrimaryPending": false,
+      "kalshiUrl": "https://kalshi.com/markets/senatenj/senatenj-26"
     },
     {
       "state": "NM",
@@ -266,7 +290,8 @@
       "demCandidate": "Ben Ray Luj\u00e1n",
       "repCandidate": "Larry E. Marker",
       "demPrimaryPending": false,
-      "repPrimaryPending": false
+      "repPrimaryPending": false,
+      "kalshiUrl": "https://kalshi.com/markets/senatenm/senatenm-26"
     },
     {
       "state": "OH",
@@ -276,7 +301,8 @@
       "demCandidate": "Sherrod Brown",
       "repCandidate": "Jon Husted",
       "demPrimaryPending": false,
-      "repPrimaryPending": false
+      "repPrimaryPending": false,
+      "kalshiUrl": "https://kalshi.com/markets/senateohs/senateohs-26"
     },
     {
       "state": "OK",
@@ -286,7 +312,8 @@
       "demCandidate": "Democratic party",
       "repCandidate": "Kevin Hern",
       "demPrimaryPending": true,
-      "repPrimaryPending": false
+      "repPrimaryPending": false,
+      "kalshiUrl": "https://kalshi.com/markets/senateok/senateok-26"
     },
     {
       "state": "OR",
@@ -296,7 +323,8 @@
       "demCandidate": "Jeff Merkley",
       "repCandidate": "David Brock Smith",
       "demPrimaryPending": false,
-      "repPrimaryPending": false
+      "repPrimaryPending": false,
+      "kalshiUrl": "https://kalshi.com/markets/senateor/senateor-26"
     },
     {
       "state": "RI",
@@ -306,7 +334,8 @@
       "demCandidate": "Democratic party",
       "repCandidate": "Republican party",
       "demPrimaryPending": true,
-      "repPrimaryPending": true
+      "repPrimaryPending": true,
+      "kalshiUrl": "https://kalshi.com/markets/senateri/senateri-26"
     },
     {
       "state": "SC",
@@ -316,7 +345,8 @@
       "demCandidate": "Annie Andrews",
       "repCandidate": "Republican party",
       "demPrimaryPending": false,
-      "repPrimaryPending": true
+      "repPrimaryPending": true,
+      "kalshiUrl": "https://kalshi.com/markets/senatesc/senatesc-26"
     },
     {
       "state": "SD",
@@ -327,6 +357,7 @@
       "repCandidate": "Mike Rounds",
       "demPrimaryPending": false,
       "repPrimaryPending": false,
+      "kalshiUrl": "https://kalshi.com/markets/senatesd/senatesd-26",
       "otherTickers": [
         {
           "candidate": "Brian Bengs",
@@ -343,7 +374,8 @@
       "demCandidate": "Marquita Bradshaw",
       "repCandidate": "Bill Hagerty",
       "demPrimaryPending": false,
-      "repPrimaryPending": false
+      "repPrimaryPending": false,
+      "kalshiUrl": "https://kalshi.com/markets/senatetn/senatetn-26"
     },
     {
       "state": "TX",
@@ -353,7 +385,8 @@
       "demCandidate": "James Talarico",
       "repCandidate": "Ken Paxton",
       "demPrimaryPending": false,
-      "repPrimaryPending": false
+      "repPrimaryPending": false,
+      "kalshiUrl": "https://kalshi.com/markets/senatetx/senatetx-26"
     },
     {
       "state": "VA",
@@ -363,7 +396,8 @@
       "demCandidate": "Mark Warner",
       "repCandidate": "Bert Mizusawa",
       "demPrimaryPending": false,
-      "repPrimaryPending": false
+      "repPrimaryPending": false,
+      "kalshiUrl": "https://kalshi.com/markets/senateva/senateva-26"
     },
     {
       "state": "WV",
@@ -373,7 +407,8 @@
       "demCandidate": "Rachel Fetty Anderson",
       "repCandidate": "Shelley Moore Capito",
       "demPrimaryPending": false,
-      "repPrimaryPending": false
+      "repPrimaryPending": false,
+      "kalshiUrl": "https://kalshi.com/markets/senatewv/senatewv-26"
     },
     {
       "state": "WY",
@@ -383,7 +418,8 @@
       "demCandidate": "James Byrd",
       "repCandidate": "Harriet Hageman",
       "demPrimaryPending": false,
-      "repPrimaryPending": false
+      "repPrimaryPending": false,
+      "kalshiUrl": "https://kalshi.com/markets/senatewy/senatewy-26"
     }
   ],
   "failedStates": []

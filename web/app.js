@@ -19,6 +19,11 @@ import { renderMap } from './map.js';
 
 const CONTESTED_UNITS = 130;
 
+// No hover on touchscreens: a linked segment needs its tooltip treated as a
+// preview, with an explicit second tap to actually follow the link (see
+// bindLink below). Detected once, not per element.
+const isTouchDevice = window.matchMedia('(hover: none), (pointer: coarse)').matches;
+
 function escapeHtml(s) {
   return String(s)
     .replace(/&/g, '&amp;')
@@ -31,11 +36,17 @@ function tooltipHtml(payload) {
   const rows = payload.rows.map(r =>
     `<div class="row"><span>${escapeHtml(r.label)}</span><span class="value">${escapeHtml(r.value)}</span></div>`
   ).join('');
-  return `<div class="title">${escapeHtml(payload.title)}</div>${rows}`;
+  const hint = payload.href
+    ? `<div class="hint">${isTouchDevice ? 'Tap again to view on Kalshi ↗' : 'Click to view on Kalshi ↗'}</div>`
+    : '';
+  return `<div class="title">${escapeHtml(payload.title)}</div>${rows}${hint}`;
 }
 
 function wireTooltip(containerEl, tooltipEl) {
   let active = false;
+  // Touch only: the element armed to navigate on its *next* tap, since the
+  // first tap on a link just shows the preview instead.
+  let armedEl = null;
 
   function show(payload, event) {
     active = true;
@@ -51,11 +62,50 @@ function wireTooltip(containerEl, tooltipEl) {
   }
   function hide() {
     active = false;
+    armedEl = null;
     tooltipEl.style.display = 'none';
   }
 
   containerEl.addEventListener('mousemove', move);
-  return { show, hide };
+
+  if (isTouchDevice) {
+    // Tapping anywhere outside this bar dismisses its open preview.
+    document.addEventListener('click', e => {
+      if (!containerEl.contains(e.target)) hide();
+    });
+  }
+
+  // Tooltip-only element (the solid D/R blocks: no single race backs them,
+  // so nothing to link to).
+  function bindHover(el, payload) {
+    if (isTouchDevice) {
+      el.addEventListener('click', e => { e.preventDefault(); show(payload, e); });
+    } else {
+      el.addEventListener('mouseenter', e => show(payload, e));
+      el.addEventListener('mouseleave', hide);
+    }
+  }
+
+  // Linked element (a contested-race segment, a real <a href>). Desktop:
+  // hover already previews it, so a click just navigates immediately. Touch:
+  // first tap previews and arms the element; a second tap on that same
+  // element is left alone and follows the link natively.
+  function bindLink(el, payload) {
+    if (isTouchDevice) {
+      el.addEventListener('click', e => {
+        if (armedEl !== el) {
+          e.preventDefault();
+          show(payload, e);
+          armedEl = el;
+        }
+      });
+    } else {
+      el.addEventListener('mouseenter', e => show(payload, e));
+      el.addEventListener('mouseleave', hide);
+    }
+  }
+
+  return { bindHover, bindLink, hide };
 }
 
 function buildRaceTooltip(r) {
@@ -68,7 +118,7 @@ function buildRaceTooltip(r) {
   }
   let title = r.state + (r.raceType === 'special' ? ' — special election' : '');
   if (r.stale) title += ' (as of ' + formatDate(r.staleSince) + ')';
-  return { title, rows };
+  return { title, rows, href: r.kalshiUrl };
 }
 
 function makeContestedSeg(r) {
@@ -76,6 +126,7 @@ function makeContestedSeg(r) {
   return {
     state: r.state,
     race: r,
+    href: r.kalshiUrl,
     color: colorForDemProb(r.demProbability),
     leadLabel: Math.round(Math.max(r.demProbability, r.repProbability) * 100),
     leadParty: leadDem ? 'D' : 'R',
@@ -138,7 +189,7 @@ function computeVals(data) {
 
 function segHtmlWide(seg, i) {
   return `
-    <div class="seg-wide" style="background:${seg.color};" data-seg-index="${i}">
+    <a class="seg-wide" href="${escapeHtml(seg.href)}" target="_blank" rel="noopener noreferrer" style="background:${seg.color};" data-seg-index="${i}">
       <span class="seg-label-stack">
         <span class="seg-state">${escapeHtml(seg.state)}</span>
         <span class="seg-pct">${seg.leadLabel}</span>
@@ -146,18 +197,18 @@ function segHtmlWide(seg, i) {
       </span>
       ${seg.showIndependentMark ? '<span class="ind-mark-h"></span>' : ''}
       ${seg.showPendingMark ? '<span class="pending-mark-h"></span>' : ''}
-    </div>`;
+    </a>`;
 }
 
 function segHtmlNarrow(seg, i) {
   return `
-    <div class="seg-narrow" style="background:${seg.color};" data-seg-index="${i}">
+    <a class="seg-narrow" href="${escapeHtml(seg.href)}" target="_blank" rel="noopener noreferrer" style="background:${seg.color};" data-seg-index="${i}">
       <span class="seg-state">${escapeHtml(seg.state)}</span>
       <span class="seg-pct">${seg.leadLabel}</span>
       <span class="seg-party">${seg.leadParty}</span>
       ${seg.showIndependentMark ? '<span class="ind-mark-v"></span>' : ''}
       ${seg.showPendingMark ? '<span class="pending-mark-v"></span>' : ''}
-    </div>`;
+    </a>`;
 }
 
 function renderGauge(vals) {
@@ -191,13 +242,11 @@ function renderWideBar(vals) {
   const tooltipEl = document.getElementById('tooltip-wide');
   const tip = wireTooltip(barEl, tooltipEl);
 
-  barEl.querySelector('[data-tip="dem-solid"]').addEventListener('mouseenter', e => tip.show(vals.demBlockTooltip, e));
-  barEl.querySelector('[data-tip="rep-solid"]').addEventListener('mouseenter', e => tip.show(vals.repBlockTooltip, e));
-  barEl.querySelectorAll('[data-tip="dem-solid"], [data-tip="rep-solid"]').forEach(el => el.addEventListener('mouseleave', tip.hide));
+  tip.bindHover(barEl.querySelector('[data-tip="dem-solid"]'), vals.demBlockTooltip);
+  tip.bindHover(barEl.querySelector('[data-tip="rep-solid"]'), vals.repBlockTooltip);
   barEl.querySelectorAll('.seg-wide').forEach(el => {
     const seg = vals.segments[Number(el.dataset.segIndex)];
-    el.addEventListener('mouseenter', e => tip.show(seg.tooltip, e));
-    el.addEventListener('mouseleave', tip.hide);
+    tip.bindLink(el, seg.tooltip);
   });
 }
 
@@ -227,13 +276,11 @@ function renderNarrowBar(vals) {
   const tooltipEl = document.getElementById('tooltip-narrow');
   const tip = wireTooltip(barEl, tooltipEl);
 
-  barEl.querySelector('[data-tip="dem-solid"]').addEventListener('mouseenter', e => tip.show(vals.demBlockTooltip, e));
-  barEl.querySelector('[data-tip="rep-solid"]').addEventListener('mouseenter', e => tip.show(vals.repBlockTooltip, e));
-  barEl.querySelectorAll('[data-tip="dem-solid"], [data-tip="rep-solid"]').forEach(el => el.addEventListener('mouseleave', tip.hide));
+  tip.bindHover(barEl.querySelector('[data-tip="dem-solid"]'), vals.demBlockTooltip);
+  tip.bindHover(barEl.querySelector('[data-tip="rep-solid"]'), vals.repBlockTooltip);
   barEl.querySelectorAll('.seg-narrow').forEach(el => {
     const seg = vals.segments[Number(el.dataset.segIndex)];
-    el.addEventListener('mouseenter', e => tip.show(seg.tooltip, e));
-    el.addEventListener('mouseleave', tip.hide);
+    tip.bindLink(el, seg.tooltip);
   });
 }
 
