@@ -1,0 +1,390 @@
+{
+  "fetchedAt": "2026-08-22T20:15:47Z",
+  "controlsMarket": {
+    "eventTicker": "CONTROLS-2026",
+    "demProbability": 0.46,
+    "repProbability": 0.54,
+    "fetchError": null
+  },
+  "races": [
+    {
+      "state": "AK",
+      "raceType": "regular",
+      "demProbability": 0.5980392156862745,
+      "repProbability": 0.40196078431372545,
+      "demCandidate": "Democratic party",
+      "repCandidate": "Republican party",
+      "demPrimaryPending": true,
+      "repPrimaryPending": true
+    },
+    {
+      "state": "AL",
+      "raceType": "regular",
+      "demProbability": 0.057803468208092484,
+      "repProbability": 0.9421965317919074,
+      "demCandidate": "Everett Wess",
+      "repCandidate": "Barry Moore",
+      "demPrimaryPending": false,
+      "repPrimaryPending": false
+    },
+    {
+      "state": "AR",
+      "raceType": "regular",
+      "demProbability": 0.05882352941176471,
+      "repProbability": 0.9411764705882354,
+      "demCandidate": "Hallie Shoffner",
+      "repCandidate": "Tom Cotton",
+      "demPrimaryPending": false,
+      "repPrimaryPending": false
+    },
+    {
+      "state": "CO",
+      "raceType": "regular",
+      "demProbability": 0.9797979797979798,
+      "repProbability": 0.020202020202020204,
+      "demCandidate": "John Hickenlooper",
+      "repCandidate": "Mark Baisley",
+      "demPrimaryPending": false,
+      "repPrimaryPending": false
+    },
+    {
+      "state": "DE",
+      "raceType": "regular",
+      "demProbability": 0.9667644183773216,
+      "repProbability": 0.0332355816226784,
+      "demCandidate": "Democratic party",
+      "repCandidate": "Republican party",
+      "demPrimaryPending": true,
+      "repPrimaryPending": true
+    },
+    {
+      "state": "FL",
+      "raceType": "special",
+      "demProbability": 0.07,
+      "repProbability": 0.93,
+      "demCandidate": "Angie Nixon",
+      "repCandidate": "Ashley Moody",
+      "demPrimaryPending": false,
+      "repPrimaryPending": false
+    },
+    {
+      "state": "GA",
+      "raceType": "regular",
+      "demProbability": 0.9154228855721392,
+      "repProbability": 0.08457711442786069,
+      "demCandidate": "Jon Ossoff",
+      "repCandidate": "Mike Collins",
+      "demPrimaryPending": false,
+      "repPrimaryPending": false
+    },
+    {
+      "state": "IA",
+      "raceType": "regular",
+      "demProbability": 0.4077669902912621,
+      "repProbability": 0.5922330097087378,
+      "demCandidate": "Josh Turek",
+      "repCandidate": "Ashley Hinson",
+      "demPrimaryPending": false,
+      "repPrimaryPending": false
+    },
+    {
+      "state": "ID",
+      "raceType": "regular",
+      "demProbability": 0.0019342359767891683,
+      "repProbability": 0.9303675048355898,
+      "demCandidate": "David Roth",
+      "repCandidate": "Jim Risch",
+      "demPrimaryPending": false,
+      "repPrimaryPending": false,
+      "otherTickers": [
+        {
+          "candidate": "Todd Achilles",
+          "affiliation": "independent",
+          "probability": 0.06769825918762089
+        }
+      ]
+    },
+    {
+      "state": "IL",
+      "raceType": "regular",
+      "demProbability": 0.9490509490509491,
+      "repProbability": 0.05094905094905095,
+      "demCandidate": "Juliana Stratton",
+      "repCandidate": "Don Tracy",
+      "demPrimaryPending": false,
+      "repPrimaryPending": false
+    },
+    {
+      "state": "KS",
+      "raceType": "regular",
+      "demProbability": 0.19607843137254902,
+      "repProbability": 0.8039215686274509,
+      "demCandidate": "Adam Hamilton",
+      "repCandidate": "Roger Marshall",
+      "demPrimaryPending": false,
+      "repPrimaryPending": false
+    },
+    {
+      "state": "KY",
+      "raceType": "regular",
+      "demProbability": 0.051463168516649845,
+      "repProbability": 0.9485368314833501,
+      "demCandidate": "Charles Booker",
+      "repCandidate": "Andy Barr",
+      "demPrimaryPending": false,
+      "repPrimaryPending": false
+    },
+    {
+      "state": "LA",
+      "raceType": "regular",
+      "demProbability": 0.08147429679922406,
+      "repProbability": 0.918525703200776,
+      "demCandidate": "Jamie Davis",
+      "repCandidate": "Julia Letlow",
+      "demPrimaryPending": false,
+      "repPrimaryPending": false
+    },
+    {
+      "state": "MA",
+      "raceType": "regular",
+      "demProbability": 0.9554013875123886,
+      "repProbability": 0.0445986124876115,
+      "demCandidate": "Democratic party",
+      "repCandidate": "Republican party",
+      "demPrimaryPending": true,
+      "repPrimaryPending": true
+    },
+    {
+      "state": "ME",
+      "raceType": "regular",
+      "demProbability": 0.6831683168316831,
+      "repProbability": 0.31683168316831684,
+      "demCandidate": "Troy Jackson",
+      "repCandidate": "Susan Collins",
+      "demPrimaryPending": false,
+      "repPrimaryPending": false
+    },
+    {
+      "state": "MI",
+      "raceType": "regular",
+      "demProbability": 0.6039603960396039,
+      "repProbability": 0.39603960396039606,
+      "demCandidate": "Abdul El-Sayed",
+      "repCandidate": "Mike Rogers",
+      "demPrimaryPending": false,
+      "repPrimaryPending": false
+    },
+    {
+      "state": "MN",
+      "raceType": "regular",
+      "demProbability": 0.8917322834645669,
+      "repProbability": 0.10826771653543307,
+      "demCandidate": "Peggy Flanagan",
+      "repCandidate": "Michele Tafoya",
+      "demPrimaryPending": false,
+      "repPrimaryPending": false
+    },
+    {
+      "state": "MS",
+      "raceType": "regular",
+      "demProbability": 0.08284023668639054,
+      "repProbability": 0.9171597633136095,
+      "demCandidate": "Scott Colom",
+      "repCandidate": "Cindy Hyde-Smith",
+      "demPrimaryPending": false,
+      "repPrimaryPending": false
+    },
+    {
+      "state": "MT",
+      "raceType": "regular",
+      "demProbability": 0.01379310344827586,
+      "repProbability": 0.8886699507389162,
+      "demCandidate": "Alani Bankhead",
+      "repCandidate": "Kurt Alme",
+      "demPrimaryPending": false,
+      "repPrimaryPending": false,
+      "otherTickers": [
+        {
+          "candidate": "Seth Bodnar",
+          "affiliation": "independent",
+          "probability": 0.09753694581280788
+        }
+      ]
+    },
+    {
+      "state": "NC",
+      "raceType": "regular",
+      "demProbability": 0.9145978152929493,
+      "repProbability": 0.08540218470705063,
+      "demCandidate": "Roy Cooper",
+      "repCandidate": "Michael Whatley",
+      "demPrimaryPending": false,
+      "repPrimaryPending": false
+    },
+    {
+      "state": "NE",
+      "raceType": "regular",
+      "demProbability": 0.004926108374384237,
+      "repProbability": 0.6995073891625616,
+      "demCandidate": "Cindy Burbank",
+      "repCandidate": "Pete Ricketts",
+      "demPrimaryPending": false,
+      "repPrimaryPending": false,
+      "otherTickers": [
+        {
+          "candidate": "Dan Osborn",
+          "affiliation": "independent",
+          "probability": 0.2955665024630542
+        }
+      ]
+    },
+    {
+      "state": "NH",
+      "raceType": "regular",
+      "demProbability": 0.8747591522157996,
+      "repProbability": 0.1252408477842004,
+      "demCandidate": "Democratic party",
+      "repCandidate": "Republican party",
+      "demPrimaryPending": true,
+      "repPrimaryPending": true
+    },
+    {
+      "state": "NJ",
+      "raceType": "regular",
+      "demProbability": 0.9799599198396793,
+      "repProbability": 0.02004008016032064,
+      "demCandidate": "Cory Booker",
+      "repCandidate": "Justin Murphy",
+      "demPrimaryPending": false,
+      "repPrimaryPending": false
+    },
+    {
+      "state": "NM",
+      "raceType": "regular",
+      "demProbability": 0.9799196787148594,
+      "repProbability": 0.020080321285140562,
+      "demCandidate": "Ben Ray Luj\u00e1n",
+      "repCandidate": "Larry E. Marker",
+      "demPrimaryPending": false,
+      "repPrimaryPending": false
+    },
+    {
+      "state": "OH",
+      "raceType": "special",
+      "demProbability": 0.5151515151515151,
+      "repProbability": 0.48484848484848486,
+      "demCandidate": "Sherrod Brown",
+      "repCandidate": "Jon Husted",
+      "demPrimaryPending": false,
+      "repPrimaryPending": false
+    },
+    {
+      "state": "OK",
+      "raceType": "regular",
+      "demProbability": 0.01859504132231405,
+      "repProbability": 0.981404958677686,
+      "demCandidate": "Democratic party",
+      "repCandidate": "Kevin Hern",
+      "demPrimaryPending": true,
+      "repPrimaryPending": false
+    },
+    {
+      "state": "OR",
+      "raceType": "regular",
+      "demProbability": 0.9731610337972166,
+      "repProbability": 0.0268389662027833,
+      "demCandidate": "Jeff Merkley",
+      "repCandidate": "David Brock Smith",
+      "demPrimaryPending": false,
+      "repPrimaryPending": false
+    },
+    {
+      "state": "RI",
+      "raceType": "regular",
+      "demProbability": 0.9879032258064516,
+      "repProbability": 0.012096774193548387,
+      "demCandidate": "Democratic party",
+      "repCandidate": "Republican party",
+      "demPrimaryPending": true,
+      "repPrimaryPending": true
+    },
+    {
+      "state": "SC",
+      "raceType": "regular",
+      "demProbability": 0.11764705882352941,
+      "repProbability": 0.8823529411764706,
+      "demCandidate": "Annie Andrews",
+      "repCandidate": "Republican party",
+      "demPrimaryPending": false,
+      "repPrimaryPending": true
+    },
+    {
+      "state": "SD",
+      "raceType": "regular",
+      "demProbability": 0.025069637883008356,
+      "repProbability": 0.9006499535747446,
+      "demCandidate": "Julian Beaudion",
+      "repCandidate": "Mike Rounds",
+      "demPrimaryPending": false,
+      "repPrimaryPending": false,
+      "otherTickers": [
+        {
+          "candidate": "Brian Bengs",
+          "affiliation": "independent",
+          "probability": 0.07428040854224699
+        }
+      ]
+    },
+    {
+      "state": "TN",
+      "raceType": "regular",
+      "demProbability": 0.03560830860534125,
+      "repProbability": 0.9643916913946589,
+      "demCandidate": "Marquita Bradshaw",
+      "repCandidate": "Bill Hagerty",
+      "demPrimaryPending": false,
+      "repPrimaryPending": false
+    },
+    {
+      "state": "TX",
+      "raceType": "regular",
+      "demProbability": 0.4752475247524752,
+      "repProbability": 0.5247524752475248,
+      "demCandidate": "James Talarico",
+      "repCandidate": "Ken Paxton",
+      "demPrimaryPending": false,
+      "repPrimaryPending": false
+    },
+    {
+      "state": "VA",
+      "raceType": "regular",
+      "demProbability": 0.9503475670307846,
+      "repProbability": 0.0496524329692155,
+      "demCandidate": "Mark Warner",
+      "repCandidate": "Bert Mizusawa",
+      "demPrimaryPending": false,
+      "repPrimaryPending": false
+    },
+    {
+      "state": "WV",
+      "raceType": "regular",
+      "demProbability": 0.028798411122144988,
+      "repProbability": 0.9712015888778551,
+      "demCandidate": "Rachel Fetty Anderson",
+      "repCandidate": "Shelley Moore Capito",
+      "demPrimaryPending": false,
+      "repPrimaryPending": false
+    },
+    {
+      "state": "WY",
+      "raceType": "regular",
+      "demProbability": 0.020710059171597635,
+      "repProbability": 0.9792899408284024,
+      "demCandidate": "James Byrd",
+      "repCandidate": "Harriet Hageman",
+      "demPrimaryPending": false,
+      "repPrimaryPending": false
+    }
+  ],
+  "failedStates": []
+}

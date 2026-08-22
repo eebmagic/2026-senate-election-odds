@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>2026 U.S. Senate Races</title>
+<style>
+  body { margin: 0; background: #faf8f4; font-family: Helvetica, Arial, sans-serif; color: #211f1c; }
+  a { color: #2f5aa8; }
+  a:hover { color: #1c3f7a; }
+  #page { max-width: 1180px; margin: 0 auto; padding: 48px 32px 80px; }
+
+  .header { display: flex; justify-content: space-between; align-items: flex-end; gap: 24px; flex-wrap: wrap; margin-bottom: 32px; border-bottom: 1px solid #e2ded5; padding-bottom: 20px; }
+  .eyebrow { font-size: 13px; letter-spacing: 0.06em; text-transform: uppercase; color: #5b574f; font-weight: 600; margin-bottom: 6px; }
+  h1 { font-size: 34px; margin: 0; font-weight: 700; }
+  .meta { text-align: right; font-size: 12.5px; color: #5b574f; font-family: ui-monospace, monospace; }
+  .meta .stale { color: #8a2a22; }
+
+  #status { padding: 40px 0; color: #5b574f; font-size: 14px; }
+  #status.error { color: #8a2a22; }
+  #app { display: none; }
+
+  .section-heading { font-size: 15px; font-weight: 700; }
+  .caption { font-size: 12px; color: #5b574f; }
+
+  /* Chamber control gauge */
+  .gauge-section { margin-bottom: 44px; }
+  .gauge-wrap { position: relative; height: 60px; width: 100%; margin-top: 8px; }
+  .gauge-bar { position: relative; height: 60px; width: 100%; border-radius: 6px; overflow: hidden; display: flex; box-shadow: inset 0 0 0 1px #e2ded5; }
+  .gauge-seg { height: 100%; display: flex; align-items: center; color: #fff; font-weight: 700; font-size: 15px; white-space: nowrap; }
+  .gauge-seg.dem { background: #2f5aa8; padding-left: 18px; }
+  .gauge-seg.rep { background: #b3372c; justify-content: flex-end; padding-right: 18px; }
+  .gauge-divider { position: absolute; left: 50%; top: -8px; bottom: -8px; width: 2px; background: #211f1c; transform: translateX(-1px); pointer-events: none; }
+  .gauge-caption { font-size: 12px; color: #5b574f; margin-top: 8px; }
+
+  /* Seat spectrum */
+  .spectrum-section { margin-bottom: 52px; }
+  .spectrum-header { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 12px; flex-wrap: wrap; gap: 8px; }
+
+  .bar-wrap-wide { position: relative; height: 108px; width: 100%; padding-top: 20px; box-sizing: border-box; }
+  .callout { position: absolute; top: 0; height: 20px; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; white-space: nowrap; text-align: center; pointer-events: none; transform: translateX(-50%); }
+  .bar-wide { position: relative; height: 88px; width: 100%; display: flex; border-radius: 4px; overflow: hidden; }
+  .solid-block { height: 100%; cursor: pointer; }
+  .solid-block.dem { background: #2f5aa8; }
+  .solid-block.rep { background: #b3372c; }
+  .contested-wrap-wide { height: 100%; display: flex; border-left: 1px solid rgba(250,248,244,0.5); box-sizing: border-box; }
+  .seg-wide { position: relative; flex: 1 1 0%; height: 100%; border-right: 1px solid rgba(250,248,244,0.5); box-sizing: border-box; cursor: pointer; color: #000; }
+  .seg-label-stack { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); display: flex; flex-direction: column; align-items: center; gap: 2px; width: 100%; }
+  .seg-state { font-size: 11px; font-weight: 700; letter-spacing: 0.02em; text-align: center; }
+  .seg-pct { font-size: 9px; font-weight: 600; text-align: center; }
+  .seg-party { font-size: 8px; font-weight: 700; text-align: center; opacity: 0.85; }
+  .ind-mark-h { position: absolute; top: 0; left: 0; right: 0; height: 3px; background: #c98a2c; }
+  .pending-mark-h { position: absolute; bottom: 0; left: 0; right: 0; height: 5px; background: #faf8f4; }
+  .majority-line-wide { position: absolute; top: 12px; bottom: -8px; width: 2px; background: #211f1c; transform: translateX(-1px); pointer-events: none; }
+
+  .bar-wrap-narrow { display: flex; justify-content: center; }
+  .bar-inner-narrow { position: relative; width: 100%; max-width: 300px; height: 780px; }
+  .solid-caption { text-align: center; font-size: 11px; font-weight: 700; }
+  .solid-caption.dem { color: #1c3f7a; margin-bottom: 6px; }
+  .solid-caption.rep { color: #8a2a22; }
+  .bar-track-narrow { position: relative; height: 700px; width: 100%; margin: 0 0 6px; }
+  .bar-narrow { position: relative; height: 100%; width: 100%; display: flex; flex-direction: column; border-radius: 4px; overflow: hidden; }
+  .solid-block-narrow { width: 100%; cursor: pointer; }
+  .solid-block-narrow.dem { background: #2f5aa8; }
+  .solid-block-narrow.rep { background: #b3372c; }
+  .contested-wrap-narrow { width: 100%; display: flex; flex-direction: column; border-top: 1px solid rgba(250,248,244,0.5); box-sizing: border-box; }
+  .seg-narrow { position: relative; flex: 1 1 0%; width: 100%; border-bottom: 1px solid rgba(250,248,244,0.5); box-sizing: border-box; cursor: pointer; color: #000; display: flex; align-items: center; justify-content: center; gap: 5px; }
+  .seg-narrow .seg-state { font-size: 10px; }
+  .ind-mark-v { position: absolute; top: 0; bottom: 0; left: 0; width: 3px; background: #c98a2c; }
+  .pending-mark-v { position: absolute; top: 0; bottom: 0; right: 0; width: 5px; background: #faf8f4; }
+  .majority-line-narrow { position: absolute; left: -8px; right: -8px; height: 2px; background: #211f1c; transform: translateY(-1px); pointer-events: none; }
+  .majority-label-narrow { position: absolute; right: -8px; transform: translate(100%, -50%); font-size: 10px; font-weight: 700; color: #211f1c; white-space: nowrap; pointer-events: none; padding-left: 4px; }
+
+  .legend { display: flex; gap: 22px; flex-wrap: wrap; margin-top: 14px; font-size: 12px; color: #5b574f; }
+  .legend-item { display: flex; align-items: center; gap: 6px; }
+  .swatch { display: inline-block; }
+  .swatch.block { width: 12px; height: 12px; border-radius: 2px; }
+  .swatch.line { width: 12px; height: 3px; }
+  .swatch.line-thick { width: 12px; height: 5px; border: 1px solid #5b574f; }
+
+  /* Tooltip (shared by spectrum + map) */
+  .tooltip { position: absolute; pointer-events: none; background: #211f1c; color: #faf8f4; padding: 10px 13px; border-radius: 4px; font-size: 12.5px; line-height: 1.5; min-width: 150px; max-height: 260px; overflow-y: auto; overflow-x: hidden; box-shadow: 0 8px 20px rgba(0,0,0,0.28); z-index: 5; transform: translate(-50%, -100%); display: none; }
+  .tooltip .title { font-weight: 700; font-size: 13.5px; margin-bottom: 3px; white-space: nowrap; }
+  .tooltip .row { display: flex; justify-content: space-between; gap: 14px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .tooltip .row .value { color: #cfcac0; }
+
+  /* Map */
+  .map-section-caption { margin-bottom: 14px; }
+  #map-wrap { position: relative; width: 100%; height: 560px; }
+  #map-svg { width: 100%; height: 100%; display: block; }
+  path.state { stroke: #faf8f4; stroke-width: 1; cursor: pointer; }
+  path.state:hover { stroke: #211f1c; stroke-width: 1.5; }
+</style>
+</head>
+<body>
+<div id="page">
+
+  <div class="header">
+    <div>
+      <div class="eyebrow">2026 Election Cycle</div>
+      <h1>U.S. Senate Races</h1>
+    </div>
+    <div class="meta">
+      <div>Kalshi prediction-market odds</div>
+      <div id="fetched-at-label">Updated —</div>
+    </div>
+  </div>
+
+  <div id="status">Loading market data…</div>
+
+  <div id="app">
+
+    <div class="gauge-section">
+      <div class="section-heading">Chamber control</div>
+      <div class="gauge-wrap" id="gauge-wrap">
+        <div class="gauge-bar">
+          <div class="gauge-seg dem" id="gauge-dem"></div>
+          <div class="gauge-seg rep" id="gauge-rep"></div>
+        </div>
+        <div class="gauge-divider"></div>
+      </div>
+      <div class="gauge-caption">Market-implied probability of majority control after the 2026 elections, from Kalshi's CONTROLS-2026 event.</div>
+    </div>
+
+    <div class="spectrum-section">
+      <div class="spectrum-header">
+        <div class="section-heading">All 100 seats</div>
+        <div class="caption">65 not up in 2026 · 35 contested, sorted by Democratic win probability</div>
+      </div>
+
+      <div id="bar-wide-container"></div>
+      <div id="bar-narrow-container"></div>
+
+      <div class="legend">
+        <div class="legend-item"><span class="swatch block" style="background:#2f5aa8;"></span>Solid Democratic</div>
+        <div class="legend-item"><span class="swatch block" style="background:linear-gradient(90deg,#8a5a8f,#2f5aa8);"></span>Contested, leans D</div>
+        <div class="legend-item"><span class="swatch block" style="background:linear-gradient(90deg,#b3372c,#8a5a8f);"></span>Contested, leans R</div>
+        <div class="legend-item"><span class="swatch block" style="background:#b3372c;"></span>Solid Republican</div>
+        <div class="legend-item"><span class="swatch line" style="background:#c98a2c;"></span>Independent polling above 10%</div>
+        <div class="legend-item"><span class="swatch line-thick" style="background:#faf8f4;"></span>Primary not yet decided</div>
+      </div>
+    </div>
+
+    <div class="map-subsection">
+      <div class="section-heading">State-level control</div>
+      <div class="caption map-section-caption">Both seats combined per state. Diagonal stripes mark a split delegation or a 2026 toss-up race.</div>
+      <div id="map-wrap">
+        <svg id="map-svg" viewBox="0 0 975 610"></svg>
+        <div class="tooltip" id="map-tooltip"></div>
+      </div>
+    </div>
+
+  </div>
+
+</div>
+<script src="./vendor/d3.min.js"></script>
+<script src="./vendor/topojson-client.min.js"></script>
+<script type="module" src="./app.js"></script>
+</body>
+</html>
