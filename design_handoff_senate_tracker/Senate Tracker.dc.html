@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+  body { margin: 0; background: #faf8f4; }
+  a { color: #2f5aa8; }
+  a:hover { color: #1c3f7a; }
+</style>
+</helmet>
+<div style="font-family: Helvetica, Arial, sans-serif; color: #211f1c; max-width: 1180px; margin: 0 auto; padding: 48px 32px 80px;">
+
+  <div style="display: flex; justify-content: space-between; align-items: flex-end; gap: 24px; flex-wrap: wrap; margin-bottom: 32px; border-bottom: 1px solid #e2ded5; padding-bottom: 20px;">
+    <div>
+      <div style="font-size: 13px; letter-spacing: 0.06em; text-transform: uppercase; color: #5b574f; font-weight: 600; margin-bottom: 6px;">2026 Election Cycle</div>
+      <h1 style="font-size: 34px; margin: 0; font-weight: 700;">U.S. Senate Races</h1>
+    </div>
+    <div style="text-align: right; font-size: 12.5px; color: #5b574f; font-family: ui-monospace, monospace;">
+      <div>Kalshi prediction-market odds</div>
+      <div>Updated {{ fetchedAtLabel }}</div>
+    </div>
+  </div>
+
+  <sc-if value="{{ ready }}" hint-placeholder-val="{{ false }}">
+    <div>
+
+      <!-- Control gauge -->
+      <div style="margin-bottom: 44px;">
+        <div style="font-size: 15px; font-weight: 700; margin-bottom: 12px;">Chamber control</div>
+        <div ref="{{ gaugeRef }}" style="position: relative; height: 60px; width: 100%; margin-top: 8px;">
+          <div style="position: relative; height: 60px; width: 100%; border-radius: 6px; overflow: hidden; display: flex; box-shadow: inset 0 0 0 1px #e2ded5;">
+            <div style="height: 100%; width: {{ demPct }}%; background: #2f5aa8; display: flex; align-items: center; padding-left: 18px; color: #fff; font-weight: 700; font-size: 15px; white-space: nowrap;">{{ demPctLabel }}</div>
+            <div style="height: 100%; width: {{ repPct }}%; background: #b3372c; display: flex; align-items: center; justify-content: flex-end; padding-right: 18px; color: #fff; font-weight: 700; font-size: 15px; white-space: nowrap;">{{ repPctLabel }}</div>
+          </div>
+          <div style="position: absolute; left: 50%; top: -8px; bottom: -8px; width: 2px; background: #211f1c; transform: translateX(-1px); pointer-events: none;"></div>
+        </div>
+        <div style="font-size: 12px; color: #5b574f; margin-top: 8px;">Market-implied probability of majority control after the 2026 elections, from Kalshi's CONTROLS-2026 event.</div>
+      </div>
+
+      <!-- Seat spectrum -->
+      <div style="margin-bottom: 52px;">
+        <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 12px; flex-wrap: wrap; gap: 8px;">
+          <div style="font-size: 15px; font-weight: 700;">All 100 seats</div>
+          <div style="font-size: 12px; color: #5b574f;">65 not up in 2026 · 35 contested, sorted by Democratic win probability</div>
+        </div>
+        <sc-if value="{{ notNarrow }}" hint-placeholder-val="{{ true }}">
+          <div ref="{{ barRef }}" onMouseMove="{{ onBarMove }}" style="position: relative; height: 108px; width: 100%; padding-top: 20px; box-sizing: border-box;">
+            <div style="position: absolute; left: {{ majorityLinePos }}%; top: 0; height: 20px; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; color: #211f1c; white-space: nowrap; text-align: center; pointer-events: none; transform: translateX(-50%);">51 seats to control</div>
+            <div style="position: absolute; left: {{ demSolidLabelPos }}%; top: 0; height: 20px; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; color: #1c3f7a; white-space: nowrap; text-align: center; pointer-events: none; transform: translateX(-50%);">{{ demSolidCount }} D seats not up</div>
+            <div style="position: absolute; left: {{ repSolidLabelPos }}%; top: 0; height: 20px; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; color: #8a2a22; white-space: nowrap; text-align: center; pointer-events: none; transform: translateX(-50%);">{{ repSolidCount }} R seats not up</div>
+            <div style="position: relative; height: 88px; width: 100%; display: flex; border-radius: 4px; overflow: hidden;">
+              <div onMouseEnter="{{ onDemBlockEnter }}" onMouseLeave="{{ onSegLeave }}" style="flex: {{ demBlockFlex }}; height: 100%; background: #2f5aa8; cursor: pointer;"></div>
+              <div style="flex: {{ contestedWrapFlex }}; height: 100%; display: flex; border-left: 1px solid rgba(250,248,244,0.5); box-sizing: border-box;">
+                <sc-for list="{{ segments }}" as="seg" hint-placeholder-count="35">
+                  <div
+                    onMouseEnter="{{ seg.onEnter }}"
+                    onMouseLeave="{{ onSegLeave }}"
+                    style="position: relative; flex: 1 1 0%; height: 100%; background: {{ seg.color }}; border-right: 1px solid rgba(250,248,244,0.5); box-sizing: border-box; cursor: pointer; color: #000;">
+                    <span style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); display: flex; flex-direction: column; align-items: center; gap: 2px; width: 100%;">
+                      <span style="font-size: 11px; font-weight: 700; letter-spacing: 0.02em; text-align: center;">{{ seg.state }}</span>
+                      <span style="font-size: 9px; font-weight: 600; text-align: center;">{{ seg.leadLabel }}</span>
+                      <span style="font-size: 8px; font-weight: 700; text-align: center; opacity: 0.85;">{{ seg.leadParty }}</span>
+                    </span>
+                    <sc-if value="{{ seg.showIndependentMark }}" hint-placeholder-val="{{ false }}">
+                      <span style="position: absolute; top: 0; left: 0; right: 0; height: 3px; background: #c98a2c;"></span>
+                    </sc-if>
+                    <sc-if value="{{ seg.showPendingMark }}" hint-placeholder-val="{{ false }}">
+                      <span style="position: absolute; bottom: 0; left: 0; right: 0; height: 5px; background: #faf8f4;"></span>
+                    </sc-if>
+                  </div>
+                </sc-for>
+              </div>
+              <div onMouseEnter="{{ onRepBlockEnter }}" onMouseLeave="{{ onSegLeave }}" style="flex: {{ repBlockFlex }}; height: 100%; background: #b3372c; cursor: pointer;"></div>
+            </div>
+            <div style="position: absolute; left: {{ majorityLinePos }}%; top: 12px; bottom: -8px; width: 2px; background: #211f1c; transform: translateX(-1px); pointer-events: none;"></div>
+            <sc-if value="{{ hover }}" hint-placeholder-val="{{ false }}">
+              <div style="position: absolute; pointer-events: none; left: {{ mouseX }}px; top: {{ mouseY }}px; transform: translate(-50%, -100%); background: #211f1c; color: #faf8f4; padding: 10px 13px; border-radius: 4px; font-size: 12.5px; line-height: 1.5; min-width: 150px; max-height: 260px; overflow-y: auto; overflow-x: hidden; box-shadow: 0 8px 20px rgba(0,0,0,0.28); z-index: 5;">
+                <div style="font-weight: 700; font-size: 13.5px; margin-bottom: 3px; white-space: nowrap;">{{ hover.title }}</div>
+                <sc-for list="{{ hover.rows }}" as="row" hint-placeholder-count="2">
+                  <div style="display: flex; justify-content: space-between; gap: 14px; font-variant-numeric: tabular-nums; white-space: nowrap;">
+                    <span>{{ row.label }}</span><span style="color: #cfcac0;">{{ row.value }}</span>
+                  </div>
+                </sc-for>
+              </div>
+            </sc-if>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{ isNarrow }}" hint-placeholder-val="{{ false }}">
+          <div style="display: flex; justify-content: center;">
+            <div ref="{{ vBarRef }}" onMouseMove="{{ onBarMoveV }}" style="position: relative; width: 100%; max-width: 300px; height: 780px;">
+              <div style="text-align: center; font-size: 11px; font-weight: 700; color: #1c3f7a; margin-bottom: 6px;">{{ demSolidCount }} D seats not up</div>
+              <div style="position: relative; height: 700px; width: 100%; margin: 0 0 6px;">
+                <div style="position: relative; height: 100%; width: 100%; display: flex; flex-direction: column; border-radius: 4px; overflow: hidden;">
+                  <div onMouseEnter="{{ onDemBlockEnterV }}" onMouseLeave="{{ onSegLeave }}" style="flex: {{ demBlockFlex }}; width: 100%; background: #2f5aa8; cursor: pointer;"></div>
+                  <div style="flex: {{ contestedWrapFlex }}; width: 100%; display: flex; flex-direction: column; border-top: 1px solid rgba(250,248,244,0.5); box-sizing: border-box;">
+                    <sc-for list="{{ segments }}" as="seg" hint-placeholder-count="35">
+                      <div
+                        onMouseEnter="{{ seg.onEnterV }}"
+                        onMouseLeave="{{ onSegLeave }}"
+                        style="position: relative; flex: 1 1 0%; width: 100%; background: {{ seg.color }}; border-bottom: 1px solid rgba(250,248,244,0.5); box-sizing: border-box; cursor: pointer; color: #000; display: flex; align-items: center; justify-content: center; gap: 5px;">
+                        <span style="font-size: 10px; font-weight: 700; letter-spacing: 0.02em;">{{ seg.state }}</span>
+                        <span style="font-size: 9px; font-weight: 600;">{{ seg.leadLabel }}</span>
+                        <span style="font-size: 8px; font-weight: 700; opacity: 0.85;">{{ seg.leadParty }}</span>
+                        <sc-if value="{{ seg.showIndependentMark }}" hint-placeholder-val="{{ false }}">
+                          <span style="position: absolute; top: 0; bottom: 0; left: 0; width: 3px; background: #c98a2c;"></span>
+                        </sc-if>
+                        <sc-if value="{{ seg.showPendingMark }}" hint-placeholder-val="{{ false }}">
+                          <span style="position: absolute; top: 0; bottom: 0; right: 0; width: 5px; background: #faf8f4;"></span>
+                        </sc-if>
+                      </div>
+                    </sc-for>
+                  </div>
+                  <div onMouseEnter="{{ onRepBlockEnterV }}" onMouseLeave="{{ onSegLeave }}" style="flex: {{ repBlockFlex }}; width: 100%; background: #b3372c; cursor: pointer;"></div>
+                </div>
+                <div style="position: absolute; top: {{ majorityLinePos }}%; left: -8px; right: -8px; height: 2px; background: #211f1c; transform: translateY(-1px); pointer-events: none;"></div>
+                <div style="position: absolute; top: {{ majorityLinePos }}%; right: -8px; transform: translate(100%, -50%); font-size: 10px; font-weight: 700; color: #211f1c; white-space: nowrap; pointer-events: none; padding-left: 4px;">51 to control</div>
+              </div>
+              <div style="text-align: center; font-size: 11px; font-weight: 700; color: #8a2a22;">{{ repSolidCount }} R seats not up</div>
+              <sc-if value="{{ hover }}" hint-placeholder-val="{{ false }}">
+                <div style="position: absolute; pointer-events: none; left: {{ mouseX }}px; top: {{ mouseY }}px; transform: translate(-50%, -100%); background: #211f1c; color: #faf8f4; padding: 10px 13px; border-radius: 4px; font-size: 12.5px; line-height: 1.5; min-width: 150px; max-height: 260px; overflow-y: auto; overflow-x: hidden; box-shadow: 0 8px 20px rgba(0,0,0,0.28); z-index: 5;">
+                  <div style="font-weight: 700; font-size: 13.5px; margin-bottom: 3px; white-space: nowrap;">{{ hover.title }}</div>
+                  <sc-for list="{{ hover.rows }}" as="row" hint-placeholder-count="2">
+                    <div style="display: flex; justify-content: space-between; gap: 14px; font-variant-numeric: tabular-nums; white-space: nowrap;">
+                      <span>{{ row.label }}</span><span style="color: #cfcac0;">{{ row.value }}</span>
+                    </div>
+                  </sc-for>
+                </div>
+              </sc-if>
+            </div>
+          </div>
+        </sc-if>
+        <div style="display: flex; gap: 22px; flex-wrap: wrap; margin-top: 14px; font-size: 12px; color: #5b574f;">
+          <div style="display: flex; align-items: center; gap: 6px;"><span style="width: 12px; height: 12px; border-radius: 2px; background: #2f5aa8; display: inline-block;"></span>Solid Democratic</div>
+          <div style="display: flex; align-items: center; gap: 6px;"><span style="width: 12px; height: 12px; border-radius: 2px; background: linear-gradient(90deg,#8a5a8f,#2f5aa8); display: inline-block;"></span>Contested, leans D</div>
+          <div style="display: flex; align-items: center; gap: 6px;"><span style="width: 12px; height: 12px; border-radius: 2px; background: linear-gradient(90deg,#b3372c,#8a5a8f); display: inline-block;"></span>Contested, leans R</div>
+          <div style="display: flex; align-items: center; gap: 6px;"><span style="width: 12px; height: 12px; border-radius: 2px; background: #b3372c; display: inline-block;"></span>Solid Republican</div>
+          <div style="display: flex; align-items: center; gap: 6px;"><span style="width: 12px; height: 3px; background: #c98a2c; display: inline-block;"></span>Independent polling above 10%</div>
+          <div style="display: flex; align-items: center; gap: 6px;"><span style="width: 12px; height: 5px; background: #faf8f4; border: 1px solid #5b574f; display: inline-block;"></span>Primary not yet decided</div>
+        </div>
+      </div>
+
+      <!-- Map -->
+      <div>
+        <div style="font-size: 15px; font-weight: 700; margin-bottom: 4px;">State-level control</div>
+        <div style="font-size: 12px; color: #5b574f; margin-bottom: 14px;">Both seats combined per state. Diagonal stripes mark a split delegation or a 2026 toss-up race.</div>
+        <iframe src="./us-map.html" title="Map of Senate control by state" scrolling="no" style="width: 100%; height: 560px; border: none; display: block; overflow: hidden;"></iframe>
+      </div>
+
+    </div>
+  </sc-if>
+
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { data: null, hover: null, mouseX: 0, mouseY: 0, isNarrow: typeof window !== 'undefined' && window.innerWidth < 720 };
+    this.barRef = React.createRef();
+    this.vBarRef = React.createRef();
+    this.handleResize = () => this.setState({ isNarrow: window.innerWidth < 720 });
+  }
+
+  componentDidMount() {
+    import('./data.js').then(mod => this.setState({ data: mod }));
+    window.addEventListener('resize', this.handleResize);
+  }
+
+  componentWillUnmount() {
+    window.removeEventListener('resize', this.handleResize);
+  }
+
+  updateMouseFromEvent(e, ref) {
+    const rect = (ref || this.barRef).current.getBoundingClientRect();
+    return { mouseX: e.clientX - rect.left, mouseY: e.clientY - rect.top };
+  }
+
+  renderVals() {
+    const d = this.state.data;
+    if (!d) return { ready: false, segments: [], demPct: 50, repPct: 50, demPctLabel: '', repPctLabel: '', fetchedAtLabel: '', hover: null, mouseX: 0, mouseY: 0, gaugeRef: null, barRef: this.barRef, vBarRef: this.vBarRef, isNarrow: this.state.isNarrow, notNarrow: !this.state.isNarrow, onBarMove: () => {} };
+
+    const { SOLID_SEATS, RACES, CONTROLS_MARKET, FETCHED_AT, colorForDemProb, fmtPct, isMaterialIndependent, isPrimaryPending, raceHasPendingPrimary, seatPartyResolved } = d;
+
+    const dSolids = SOLID_SEATS.filter(s => seatPartyResolved(s) === 'D').sort((a, b) => a.state.localeCompare(b.state));
+    const rSolids = SOLID_SEATS.filter(s => seatPartyResolved(s) === 'R').sort((a, b) => a.state.localeCompare(b.state));
+    const contested = [...RACES].sort((a, b) => b.demProbability - a.demProbability);
+
+    const buildRaceTooltip = r => {
+      const rows = [
+        { label: r.demCandidate + (isPrimaryPending(r.demCandidate) ? ' (primary TBD)' : ''), value: 'D ' + fmtPct(r.demProbability) },
+        { label: r.repCandidate + (isPrimaryPending(r.repCandidate) ? ' (primary TBD)' : ''), value: 'R ' + fmtPct(r.repProbability) }
+      ];
+      if (isMaterialIndependent(r)) {
+        r.otherTickers.forEach(o => rows.push({ label: o.candidate + ' (I)', value: fmtPct(o.probability) }));
+      }
+      return { title: r.state + (r.raceType === 'special' ? ' — special election' : ''), rows };
+    };
+
+    const makeContestedSeg = r => {
+      const leadDem = r.demProbability >= 0.5;
+      const seg = {
+        kind: 'contested',
+        state: r.state,
+        race: r,
+        color: colorForDemProb(r.demProbability),
+        leadLabel: Math.round(Math.max(r.demProbability, r.repProbability) * 100),
+        leadParty: leadDem ? 'D' : 'R',
+        showIndependentMark: isMaterialIndependent(r),
+        showPendingMark: raceHasPendingPrimary(r)
+      };
+      const tooltip = buildRaceTooltip(r);
+      seg.onEnter = (e) => this.setState({ hover: tooltip, ...this.updateMouseFromEvent(e, this.barRef) });
+      seg.onEnterV = (e) => this.setState({ hover: tooltip, ...this.updateMouseFromEvent(e, this.vBarRef) });
+      return seg;
+    };
+
+    const segments = contested.map(makeContestedSeg);
+
+    const demSolidCount = dSolids.length;
+    const repSolidCount = rSolids.length;
+    const CONTESTED_UNITS = 130;
+    const totalUnits = demSolidCount + repSolidCount + CONTESTED_UNITS;
+    const demSolidLabelPos = (demSolidCount / totalUnits / 2) * 100;
+    const repSolidLabelPos = 100 - (repSolidCount / totalUnits / 2) * 100;
+    const demBlockPct = (demSolidCount / totalUnits) * 100;
+    const contestedPct = (CONTESTED_UNITS / totalUnits) * 100;
+    const seatsIntoContested = 50 - demSolidCount;
+    const majorityLinePos = demBlockPct + (seatsIntoContested / contested.length) * contestedPct;
+    const demBlockFlex = demSolidCount + ' 1 0%';
+    const repBlockFlex = repSolidCount + ' 1 0%';
+    const contestedWrapFlex = CONTESTED_UNITS + ' 1 0%';
+    const demBlockTooltip = { title: demSolidCount + ' Democratic seats not up in 2026', rows: dSolids.map(s => ({ label: s.state, value: s.senator })) };
+    const repBlockTooltip = { title: repSolidCount + ' Republican seats not up in 2026', rows: rSolids.map(s => ({ label: s.state, value: s.senator })) };
+    const onDemBlockEnter = (e) => this.setState({ hover: demBlockTooltip, ...this.updateMouseFromEvent(e, this.barRef) });
+    const onRepBlockEnter = (e) => this.setState({ hover: repBlockTooltip, ...this.updateMouseFromEvent(e, this.barRef) });
+    const onDemBlockEnterV = (e) => this.setState({ hover: demBlockTooltip, ...this.updateMouseFromEvent(e, this.vBarRef) });
+    const onRepBlockEnterV = (e) => this.setState({ hover: repBlockTooltip, ...this.updateMouseFromEvent(e, this.vBarRef) });
+
+    const demPct = Math.round(CONTROLS_MARKET.demProbability * 1000) / 10;
+    const repPct = Math.round(CONTROLS_MARKET.repProbability * 1000) / 10;
+    const fetchedDate = new Date(FETCHED_AT);
+    const fetchedAtLabel = fetchedDate.toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', timeZoneName: 'short' });
+
+    return {
+      ready: true,
+      segments,
+      demPct,
+      repPct,
+      demPctLabel: 'Democratic ' + fmtPct(CONTROLS_MARKET.demProbability),
+      repPctLabel: 'Republican ' + fmtPct(CONTROLS_MARKET.repProbability),
+      fetchedAtLabel,
+      hover: this.state.hover,
+      mouseX: this.state.mouseX,
+      mouseY: this.state.mouseY,
+      demSolidCount,
+      repSolidCount,
+      demSolidLabelPos,
+      repSolidLabelPos,
+      majorityLinePos,
+      demBlockFlex,
+      repBlockFlex,
+      contestedWrapFlex,
+      onDemBlockEnter,
+      onRepBlockEnter,
+      onDemBlockEnterV,
+      onRepBlockEnterV,
+      isNarrow: this.state.isNarrow,
+      notNarrow: !this.state.isNarrow,
+      barRef: this.barRef,
+      vBarRef: this.vBarRef,
+      onSegLeave: () => this.setState({ hover: null }),
+      onBarMove: (e) => {
+        if (this.state.hover) this.setState(this.updateMouseFromEvent(e, this.barRef));
+      },
+      onBarMoveV: (e) => {
+        if (this.state.hover) this.setState(this.updateMouseFromEvent(e, this.vBarRef));
+      }
+    };
+  }
+}
+
+</script>
+</body>
+</html>
