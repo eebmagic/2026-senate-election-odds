@@ -120,8 +120,13 @@
   .map-section-caption { margin-bottom: 14px; }
   #map-wrap { position: relative; width: 100%; aspect-ratio: 975 / 610; max-height: 560px; }
   #map-svg { width: 100%; height: 100%; display: block; }
-  path.state { stroke: #faf8f4; stroke-width: 1; cursor: pointer; }
+  path.state { stroke: #faf8f4; stroke-width: 1; }
   path.state:hover { stroke: #211f1c; stroke-width: 1.5; }
+  /* Only states with a contested 2026 race actually link out to Kalshi (see
+     map.js) -- cursor:pointer is scoped to those so the affordance doesn't
+     overpromise on solid/uncontested states, which have no single race to
+     link to. */
+  path.state.linked { cursor: pointer; }
 </style>
 </head>
 <body>
