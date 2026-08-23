@@ -49,6 +49,11 @@
   .seg-state { font-size: 11px; font-weight: 700; letter-spacing: 0.02em; text-align: center; }
   .seg-pct { font-size: 9px; font-weight: 600; text-align: center; }
   .seg-party { font-size: 8px; font-weight: 700; text-align: center; }
+  /* Marks a special-election seat (off-cycle race, not a regular 6-year
+     term) inline next to the state abbreviation -- see raceType==='special'
+     in live-senate-data.json and buildRaceTooltip() in app.js, which already
+     surfaced this on hover; this makes it visible without hovering. */
+  .special-mark { color: #c98a2c; }
   .ind-mark-h { position: absolute; top: 0; left: 0; right: 0; height: 3px; background: #c98a2c; }
   .pending-mark-h { position: absolute; bottom: 0; left: 0; right: 0; height: 5px; background: #faf8f4; }
   .majority-line-wide { position: absolute; top: 12px; bottom: -8px; width: 2px; background: #211f1c; transform: translateX(-1px); pointer-events: none; }
@@ -91,6 +96,7 @@
   .swatch.block { width: 12px; height: 12px; border-radius: 2px; }
   .swatch.line { width: 12px; height: 3px; }
   .swatch.line-thick { width: 12px; height: 5px; border: 1px solid #5b574f; }
+  .swatch.star { width: 12px; text-align: center; font-size: 12px; line-height: 1; color: #c98a2c; }
 
   /* Tooltip (shared by spectrum + map) */
   .tooltip { position: absolute; pointer-events: none; background: #211f1c; color: #faf8f4; padding: 10px 13px; border-radius: 4px; font-size: 12.5px; line-height: 1.5; min-width: 150px; max-height: 260px; overflow-y: auto; overflow-x: hidden; box-shadow: 0 8px 20px rgba(0,0,0,0.28); z-index: 5; transform: translate(-50%, -100%); display: none; }
@@ -165,6 +171,7 @@
         <div class="legend-item"><span class="swatch block" style="background:#b3372c;"></span>Solid Republican</div>
         <div class="legend-item"><span class="swatch line" style="background:#c98a2c;"></span>Independent polling above 10%</div>
         <div class="legend-item"><span class="swatch line-thick" style="background:#faf8f4;"></span>Primary not yet decided</div>
+        <div class="legend-item"><span class="swatch star">★</span>Special election (off-cycle, not a regular 6-year term)</div>
       </div>
     </div>
 

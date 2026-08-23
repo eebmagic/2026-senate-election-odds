@@ -221,6 +221,7 @@ function makeContestedSeg(r) {
     leadParty: leadDem ? 'D' : 'R',
     showIndependentMark: isMaterialIndependent(r),
     showPendingMark: raceHasPendingPrimary(r),
+    isSpecial: r.raceType === 'special',
     tooltip: buildRaceTooltip(r)
   };
 }
@@ -283,7 +284,7 @@ function segHtmlWide(seg, i) {
   return `
     <a class="seg-wide" href="${escapeHtml(seg.href)}" target="_blank" rel="noopener noreferrer" style="background:${seg.color};" data-seg-index="${i}">
       <span class="seg-label-stack">
-        <span class="seg-state">${escapeHtml(seg.state)}</span>
+        <span class="seg-state">${escapeHtml(seg.state)}${seg.isSpecial ? ' <span class="special-mark" title="Special election">★</span>' : ''}</span>
         <span class="seg-pct">${seg.leadLabel}</span>
         <span class="seg-party">${seg.leadParty}</span>
       </span>
@@ -295,7 +296,7 @@ function segHtmlWide(seg, i) {
 function segHtmlNarrow(seg, i) {
   return `
     <a class="seg-narrow" href="${escapeHtml(seg.href)}" target="_blank" rel="noopener noreferrer" style="background:${seg.color};" data-seg-index="${i}">
-      <span class="seg-state">${escapeHtml(seg.state)}</span>
+      <span class="seg-state">${escapeHtml(seg.state)}${seg.isSpecial ? ' <span class="special-mark" title="Special election">★</span>' : ''}</span>
       <span class="seg-pct">${seg.leadLabel}</span>
       <span class="seg-party">${seg.leadParty}</span>
       ${seg.showIndependentMark ? '<span class="ind-mark-v"></span>' : ''}
