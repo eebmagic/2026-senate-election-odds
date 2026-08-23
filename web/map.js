@@ -58,6 +58,12 @@ function tooltipHtml(summary, name) {
     if (r.stale) {
       html += '<div class="row"><span>as of</span><span class="value">' + escapeHtml(r.staleSince || 'unknown') + '</span></div>';
     }
+    // Mirrors the seat-bar's tooltip hint (see tooltipHtml() in app.js) --
+    // only states with a 2026 race actually link out to Kalshi (see
+    // renderMap below), so only those get the call-to-action line.
+    if (r.kalshiUrl) {
+      html += '<div class="hint">Click to view on Kalshi &#8599;</div>';
+    }
   }
   return html;
 }
@@ -96,11 +102,38 @@ export async function renderMap(races) {
   const projection = d3.geoAlbersUsa().fitSize([960, 600], geo);
   const path = d3.geoPath().projection(projection);
 
+  const svgNs = 'http://www.w3.org/2000/svg';
+
+  // States with a 2026 race genuinely link out to Kalshi, same as a
+  // seat-bar segment (a real <a href>, not just a click handler) -- see
+  // "Map states look clickable but do nothing on click" in
+  // feedback/map-and-interactivity.md. Solid/uncontested states have no
+  // single race to link to, so they render as plain (non-anchor) nodes and
+  // stay non-interactive beyond the hover tooltip.
   svg.append('g')
-    .selectAll('path')
+    .selectAll('.state-node')
     .data(geo.features)
-    .join('path')
-    .attr('class', 'state')
+    .join(enter => enter.append(d => {
+      const postal = FIPS_TO_POSTAL[d.id];
+      const summary = byPostal[postal];
+      const href = summary && summary.race && summary.race.kalshiUrl;
+      if (href) {
+        const a = document.createElementNS(svgNs, 'a');
+        a.setAttribute('href', href);
+        a.setAttribute('target', '_blank');
+        a.setAttribute('rel', 'noopener noreferrer');
+        return a;
+      }
+      return document.createElementNS(svgNs, 'g');
+    }))
+    .attr('class', 'state-node')
+    .append('path')
+    .attr('class', d => {
+      const postal = FIPS_TO_POSTAL[d.id];
+      const summary = byPostal[postal];
+      const linked = summary && summary.race && summary.race.kalshiUrl;
+      return linked ? 'state linked' : 'state';
+    })
     .attr('d', path)
     .attr('fill', d => {
       const postal = FIPS_TO_POSTAL[d.id];
