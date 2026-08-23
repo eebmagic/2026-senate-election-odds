@@ -127,7 +127,10 @@ export function colorForDemProb(p) {
 }
 
 export function fmtPct(p) {
-  return Math.round(p * 100) + '%';
+  const rounded = Math.round(p * 100);
+  if (rounded <= 0 && p > 0) return '<1%';
+  if (rounded >= 100 && p < 1) return '>99%';
+  return rounded + '%';
 }
 
 export function seatPartyResolved(seat) {
