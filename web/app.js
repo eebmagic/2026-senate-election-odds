@@ -42,31 +42,65 @@ function tooltipHtml(payload) {
   return `<div class="title">${escapeHtml(payload.title)}</div>${rows}${hint}`;
 }
 
-function wireTooltip(containerEl, tooltipEl) {
+function wireTooltip(containerEl, tooltipEl, { anchorToRow = false } = {}) {
   let active = false;
   // Touch only: the element armed to navigate on its *next* tap, since the
   // first tap on a link just shows the preview instead.
   let armedEl = null;
 
-  function show(payload, event) {
+  function show(payload, event, el) {
     active = true;
     tooltipEl.innerHTML = tooltipHtml(payload);
     tooltipEl.style.display = 'block';
-    move(event);
+    if (anchorToRow && el) {
+      positionAboveOrBelowRow(el);
+    } else {
+      tooltipEl.classList.remove('below');
+      move(event);
+    }
   }
   function move(event) {
-    if (!active) return;
+    if (!active || anchorToRow) return;
     const rect = containerEl.getBoundingClientRect();
     tooltipEl.style.left = (event.clientX - rect.left) + 'px';
     tooltipEl.style.top = (event.clientY - rect.top) + 'px';
     clampToViewport();
   }
 
+  // Narrow layout only: rows are thin (the bar is one tall column), so
+  // positioning "above the cursor" -- wherever within the row it happened to
+  // land -- can still land the tooltip on top of the tapped row itself.
+  // Anchor to the row's actual box instead: prefer above it, but flip below
+  // when there isn't room, using the tooltip's real rendered height rather
+  // than a guess.
+  function positionAboveOrBelowRow(el) {
+    const containerRect = containerEl.getBoundingClientRect();
+    const elRect = el.getBoundingClientRect();
+    const gap = 4;
+    const centerX = (elRect.left + elRect.width / 2) - containerRect.left;
+
+    tooltipEl.classList.remove('below');
+    tooltipEl.style.left = centerX + 'px';
+    tooltipEl.style.top = (elRect.top - gap - containerRect.top) + 'px';
+
+    const tHeight = tooltipEl.getBoundingClientRect().height;
+    const spaceAbove = elRect.top;
+    const spaceBelow = window.innerHeight - elRect.bottom;
+
+    if (spaceAbove < tHeight + gap && spaceBelow > spaceAbove) {
+      tooltipEl.classList.add('below');
+      tooltipEl.style.top = (elRect.bottom + gap - containerRect.top) + 'px';
+    }
+
+    clampToViewport();
+  }
+
   // The tooltip is positioned relative to its bar container, which on the
   // narrow layout is nearly as wide as the screen -- a tap near either edge
   // (or a long candidate name) can push the tooltip's centered box past the
-  // actual viewport edge. Nudge it back in after layout, using real
-  // dimensions rather than guessing a max tooltip width up front.
+  // actual viewport edge, and a tall tooltip can push past the top or bottom.
+  // Nudge it back in after layout, using real dimensions rather than
+  // guessing a max tooltip size up front.
   function clampToViewport() {
     const margin = 8;
     const tRect = tooltipEl.getBoundingClientRect();
@@ -74,6 +108,7 @@ function wireTooltip(containerEl, tooltipEl) {
     if (tRect.left < margin) dx = margin - tRect.left;
     else if (tRect.right > window.innerWidth - margin) dx = (window.innerWidth - margin) - tRect.right;
     if (tRect.top < margin) dy = margin - tRect.top;
+    else if (tRect.bottom > window.innerHeight - margin) dy = (window.innerHeight - margin) - tRect.bottom;
     if (dx || dy) {
       tooltipEl.style.left = (parseFloat(tooltipEl.style.left) + dx) + 'px';
       tooltipEl.style.top = (parseFloat(tooltipEl.style.top) + dy) + 'px';
@@ -83,9 +118,12 @@ function wireTooltip(containerEl, tooltipEl) {
     active = false;
     armedEl = null;
     tooltipEl.style.display = 'none';
+    tooltipEl.classList.remove('below');
   }
 
-  containerEl.addEventListener('mousemove', move);
+  if (!anchorToRow) {
+    containerEl.addEventListener('mousemove', move);
+  }
 
   if (isTouchDevice) {
     // Tapping anywhere outside this bar dismisses its open preview.
@@ -98,9 +136,9 @@ function wireTooltip(containerEl, tooltipEl) {
   // so nothing to link to).
   function bindHover(el, payload) {
     if (isTouchDevice) {
-      el.addEventListener('click', e => { e.preventDefault(); show(payload, e); });
+      el.addEventListener('click', e => { e.preventDefault(); show(payload, e, el); });
     } else {
-      el.addEventListener('mouseenter', e => show(payload, e));
+      el.addEventListener('mouseenter', e => show(payload, e, el));
       el.addEventListener('mouseleave', hide);
     }
   }
@@ -114,12 +152,12 @@ function wireTooltip(containerEl, tooltipEl) {
       el.addEventListener('click', e => {
         if (armedEl !== el) {
           e.preventDefault();
-          show(payload, e);
+          show(payload, e, el);
           armedEl = el;
         }
       });
     } else {
-      el.addEventListener('mouseenter', e => show(payload, e));
+      el.addEventListener('mouseenter', e => show(payload, e, el));
       el.addEventListener('mouseleave', hide);
     }
   }
@@ -293,7 +331,7 @@ function renderNarrowBar(vals) {
 
   const barEl = document.getElementById('bar-narrow');
   const tooltipEl = document.getElementById('tooltip-narrow');
-  const tip = wireTooltip(barEl, tooltipEl);
+  const tip = wireTooltip(barEl, tooltipEl, { anchorToRow: true });
 
   tip.bindHover(barEl.querySelector('[data-tip="dem-solid"]'), vals.demBlockTooltip);
   tip.bindHover(barEl.querySelector('[data-tip="rep-solid"]'), vals.repBlockTooltip);

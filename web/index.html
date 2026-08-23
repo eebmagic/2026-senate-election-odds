@@ -84,6 +84,11 @@
 
   /* Tooltip (shared by spectrum + map) */
   .tooltip { position: absolute; pointer-events: none; background: #211f1c; color: #faf8f4; padding: 10px 13px; border-radius: 4px; font-size: 12.5px; line-height: 1.5; min-width: 150px; max-height: 260px; overflow-y: auto; overflow-x: hidden; box-shadow: 0 8px 20px rgba(0,0,0,0.28); z-index: 5; transform: translate(-50%, -100%); display: none; }
+  /* Row-anchored tooltips (narrow layout): top/left mark the row's top-center
+     by default, so the tooltip sits above it (translate -100% on Y). When
+     there's no room above, .below is added and top/left instead mark the
+     row's bottom-center, so the tooltip sits below it. */
+  .tooltip.below { transform: translate(-50%, 0); }
   .tooltip .title { font-weight: 700; font-size: 13.5px; margin-bottom: 3px; white-space: nowrap; }
   .tooltip .row { display: flex; justify-content: space-between; gap: 14px; font-variant-numeric: tabular-nums; white-space: nowrap; }
   .tooltip .row .value { color: #cfcac0; }
