@@ -16,7 +16,7 @@ Hovering the large solid-color block on the seat bar (e.g. "34 D seats not up" /
 
 **Merge status:** Merged into main
 
-## Hover tooltip has no visual anchor to its trigger
+## ✅ Hover tooltip has no visual anchor to its trigger
 **Severity:** minor
 **Source:** visual design review
 
@@ -27,6 +27,10 @@ The dark tooltip that appears on hovering a seat cell (e.g., "FL — special ele
 **Review notes:** Reproduced. Hovering a seat cell (checked VA, GA, OH) shows the dark card positioned above/left of the cursor with no caret, pointer, or connecting element — confirmed in CSS that `.tooltip` defines no `::before`/`::after` arrow. It does visually overlap and obscure the row of cell labels directly beneath it (a VA hover covered the state-code text for the NJ/NM/CO/OR/DE/MA/VA cells in the row below in one screenshot). That said, since the tooltip actively tracks the cursor position (`move()` in app.js sets `tooltip.style.left/top` to `event.clientX/Y` on every `mousemove`), the cursor itself stays a fairly strong proximity cue in practice — the ambiguity is real but probably milder than "minor" implies in a dense strip, since the pointer is always right at the tooltip's corner.
 
 **Decision:** Accept
+
+**Implemented:** tooltips/visual-anchor
+
+Highlighted the hovered cell (a bright inset ring, `.tip-source` in `web/index.html`) while its tooltip is open, toggled in `show()`/`hide()` in `web/app.js`'s `wireTooltip()`. Chose this over a caret since the tooltip already tracks the cursor via `move()`, and a fixed-position caret pointing at the source cell would require separate positioning logic that conflicts with that behavior. Verified live on VA, GA, and OH seat-bar cells.
 
 ## Map tooltip and seat-bar tooltip differ in richness, inconsistently
 **Severity:** minor
