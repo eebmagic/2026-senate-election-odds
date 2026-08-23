@@ -1,6 +1,6 @@
 # Legend & Symbol Clarity
 
-## Diagonal stripes conflate two different meanings
+## ✅ Diagonal stripes conflate two different meanings
 **Severity:** moderate
 **Source:** content & wording review
 
@@ -11,6 +11,7 @@ The map caption reads "Both seats combined per state. Diagonal stripes mark a sp
 **Review notes:** Confirmed in source. `map.js`'s `fillFor()` returns the identical `url(#stripes)` pattern for both `status === 'tossup'` and `status === 'split'` (two conditions computed separately in `senate-shared.js`'s `buildStateSummaries()`: `split` = the state's two senators are permanently different parties regardless of any 2026 race, e.g. WI Baldwin D/Johnson R and PA Fetterman D/McCormick R, both with no 2026 race at all; `tossup` = the state's fixed senator and the 2026 race are same-party but the race's Democratic win probability falls in the 40–60% band, e.g. TX, IA, OH, AK, NC). Live data confirms both cases are currently on the map with the same fill. The caption text quoted in this item matches the live site exactly. Only the hover tooltip (listing actual senator names/parties or race candidates) discloses which case applies — there is no visual distinction on the map itself. The issue is real and precisely described.
 
 **Decision:** Accept
+**Implemented:** symbols/stripe-meaning-distinction — verified live: split-delegation states (e.g. WI, PA) render diagonal stripes, same-party toss-ups (e.g. OH, TX, IA) render a distinct dot pattern, and the caption text explains both.
 
 ## No stated thresholds for "Solid" vs. "Contested" categories
 **Severity:** moderate
