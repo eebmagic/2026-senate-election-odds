@@ -14,7 +14,7 @@ Hovering Oklahoma on the map shows three unlabeled rows: "Markwayne Mullin R" (h
 **Implemented:** clarity/map-tooltip-grouping — verified live: hovering Oklahoma now shows a "NOT UP IN 2026" group ("Markwayne Mullin R") separated from a "2026 RACE" group ("Democratic party (TBD) D 2%", "Kevin Hern R 98%"); confirmed on Michigan as well.
 **Merge status:** Merged into main (PR #4, `clarity/map-tooltip-grouping`)
 
-## Named candidate shown at a flat "0%"
+## ✅ Named candidate shown at a flat "0%"
 **Severity:** minor
 **Source:** content & wording review
 
@@ -25,6 +25,7 @@ The Nebraska tooltip lists "Cindy Burbank D 0%" alongside "Pete Ricketts R 70%" 
 **Review notes:** Reproduced exactly. Hovering NE in the "All 100 seats" bar chart shows "Cindy Burbank D 0%", "Pete Ricketts R 70%", "Dan Osborn (I) 30%" verbatim as described. A named, major-party candidate shown at a flat "0%" next to two candidates with real percentages does read as a data glitch rather than a deliberately negligible outcome.
 
 **Decision:** Accept
+**Implemented:** clarity/candidate-zero-percent — fixed at the shared `fmtPct()` formatter in `web/senate-shared.js` (used by both `app.js` and `map.js`), so it applies consistently to every percentage display (seat-bar tooltip, map tooltip, etc.): any probability that rounds to 0% but is greater than 0 now renders as "<1%" instead of "0%" (and, for symmetry, a probability that rounds to 100% but is less than 1 renders as ">99%"). Verified live: hovering NE in the "All 100 seats" bar chart now shows "Cindy Burbank D <1%" instead of "D 0%".
 
 ## "Seats" vs. "races" used inconsistently
 **Severity:** minor
