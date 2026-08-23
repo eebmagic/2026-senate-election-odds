@@ -1,2 +1,10 @@
 *.swp
 **/*.swp
+
+# Per-run raw Kalshi discovery snapshots (script.py); latest_kalshi_discovery.json
+# is the one snapshot copy that stays a tracked file.
+/discovery_snapshots/
+# script.py's live-senate-data.json-shaped dry-run/inspection output -- never
+# the file the site serves (that's web/live-senate-data.json).
+/live-senate-data.preview.json
+__pycache__/

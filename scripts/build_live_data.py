@@ -10,8 +10,11 @@ Output: web/live-senate-data.json -- { fetchedAt, controlsMarket, races, failedS
         per design_handoff_senate_tracker/README.md.
 
 Usage: python3 scripts/build_live_data.py
+       python3 scripts/build_live_data.py --output path/to/preview.json
 """
+import argparse
 import json
+import os
 import re
 from datetime import datetime, timezone
 from pathlib import Path
@@ -39,13 +42,23 @@ def load_event_map():
     return {k: v for k, v in raw.items() if not k.startswith("_")}
 
 
-def load_previous_output():
-    if not OUTPUT_PATH.exists():
+def load_previous_output(path: Path):
+    if not path.exists():
         return None
     try:
-        return json.loads(OUTPUT_PATH.read_text())
+        return json.loads(path.read_text())
     except (json.JSONDecodeError, OSError):
         return None
+
+
+def write_json_atomic(path: Path, payload) -> None:
+    """Write via a temp file + rename so a crash mid-write never leaves
+    `path` (a downstream consumer's input, or the site's live data file)
+    truncated or corrupt."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp_path = path.with_suffix(path.suffix + f".tmp{os.getpid()}")
+    tmp_path.write_text(json.dumps(payload, indent=2) + "\n")
+    os.replace(tmp_path, path)
 
 
 def outcome_suffix(ticker: str, event_ticker: str) -> str:
@@ -176,10 +189,21 @@ def build_controls_market(discovery, previous):
     }
 
 
-def main():
-    event_map = load_event_map()
-    discovery = json.loads(INPUT_PATH.read_text())
-    previous = load_previous_output()
+def parse_args():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--input", type=Path, default=INPUT_PATH,
+                         help="raw Kalshi discovery dump (default: %(default)s)")
+    parser.add_argument("--previous", type=Path, default=None,
+                         help="previous live-senate-data.json to carry stale "
+                              "races forward from (default: same as --output)")
+    parser.add_argument("--output", type=Path, default=OUTPUT_PATH,
+                         help="where to write the built file (default: %(default)s)")
+    return parser.parse_args()
+
+
+def build(discovery, event_map, previous):
+    """Pure transform: raw discovery dump + event map + previous output ->
+    the live-senate-data.json-shaped dict. No I/O."""
     previous_races_by_state = {}
     if previous:
         previous_races_by_state = {r["state"]: r for r in previous.get("races", [])}
@@ -208,19 +232,26 @@ def main():
 
     races.sort(key=lambda r: r["state"])
 
-    output = {
+    return {
         "fetchedAt": now_iso,
         "controlsMarket": build_controls_market(discovery, previous),
         "races": races,
         "failedStates": failed_states,
     }
 
-    OUTPUT_PATH.parent.mkdir(parents=True, exist_ok=True)
-    OUTPUT_PATH.write_text(json.dumps(output, indent=2) + "\n")
 
-    print(f"Wrote {OUTPUT_PATH} ({len(races)} races, {len(failed_states)} failed states)")
-    if failed_states:
-        print(f"  failedStates: {failed_states}")
+def main():
+    args = parse_args()
+    event_map = load_event_map()
+    discovery = json.loads(args.input.read_text())
+    previous = load_previous_output(args.previous or args.output)
+
+    output = build(discovery, event_map, previous)
+    write_json_atomic(args.output, output)
+
+    print(f"Wrote {args.output} ({len(output['races'])} races, {len(output['failedStates'])} failed states)")
+    if output["failedStates"]:
+        print(f"  failedStates: {output['failedStates']}")
 
 
 if __name__ == "__main__":
