@@ -10,7 +10,7 @@ In the "All 100 seats" strip, the "Contested, leans D" and "Contested, leans R" 
 
 **Review notes:** Confirmed via `getComputedStyle` on the "All 100 seats" strip. The contested-seat cell color is a continuous gradient interpolated by D win-probability (legend swatches themselves are `linear-gradient(90deg, rgb(179,55,44)→rgb(138,90,143))` for "leans R" and `linear-gradient(90deg, rgb(138,90,143)→rgb(47,90,168))` for "leans D" — both pivot through the same purple `rgb(138,90,143)` at the 50/50 point). Measured actual cell backgrounds at the exact pair called out: OH (52D) = `rgb(111,73,108)` vs TX (52R) = `rgb(116,72,103)` — a WCAG contrast ratio of only 1.007 and a Euclidean RGB distance of ~7/441, i.e. essentially the same color. A zoomed screenshot of the ME/MI/AK/OH/TX/IA/KS run visually confirms OH and TX are indistinguishable mauve blocks, distinguished only by the tiny "D"/"R" glyph. MI 60D vs IA 59R (a less extreme pair) is more separated (Euclidean ~36, contrast 1.02) but still a subtle, muted hue shift rather than a clear color-coded signal. This validates the claim precisely — the "critical midpoint" is a real, measurable near-collision, not just a subjective impression.
 
-**Decision:** Accept
+**Decision:** Discuss/Refine - Would the second issue here (text contrast color) resolve some of this by making the D/R note more obvious? Could the described solution above display the colors in a continuous way even between constested/solid races?
 
 ## Borderline text contrast on solid-color and contested cells
 **Severity:** minor–moderate
