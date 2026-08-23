@@ -57,6 +57,16 @@
   @media (max-width: 719px) {
     .bar-wrap-wide { display: none; }
     .bar-wrap-narrow { display: flex; }
+    /* The not-up blocks get their height from an inline flex-grow proportional
+       to seat count (see app.js), which works for the wide bar because its
+       track height is fixed regardless of proportions. In the narrow stacked
+       layout the track's *height* is what's being divided up, so a solid
+       party's ~30 "not up" seats can stretch into a tall, empty-looking
+       rectangle. Cap the block's height instead of letting it grow, and let
+       the contested segment list absorb the freed space. !important is
+       needed to win over the inline flex-grow style. */
+    .solid-block-narrow { flex: 0 0 60px !important; max-height: 60px; }
+    .contested-wrap-narrow { flex: 1 1 auto !important; }
   }
   /* Between the mobile stacked list (<=719px) and the point where the wide
      seat bar has room for full-size per-segment labels (>=1024px), segments
