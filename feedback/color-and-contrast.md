@@ -12,7 +12,7 @@ In the "All 100 seats" strip, the "Contested, leans D" and "Contested, leans R" 
 
 **Decision:** Discuss/Refine - Would the second issue here (text contrast color) resolve some of this by making the D/R note more obvious? Could the described solution above display the colors in a continuous way even between constested/solid races?
 
-## Borderline text contrast on solid-color and contested cells
+## ✅ Borderline text contrast on solid-color and contested cells
 **Severity:** minor–moderate
 **Source:** visual design review
 
@@ -23,3 +23,5 @@ The small bold state-abbreviation/probability/party labels are rendered in near-
 **Review notes:** Measured programmatically across all 35 contested-seat labels in the "All 100 seats" strip (state abbreviation / probability / party letter, `.seg-state` and siblings). Text color is pure black `rgb(0,0,0)`, font is 11px / weight 700 — well under the WCAG "large text" threshold, so the 4.5:1 AA minimum applies, not the relaxed 3:1. Computed contrast ratios against each cell's actual background ranged from **2.83 to 3.5** across all 35 cells — every single one fails AA, none reach even the lower 3:1 large-text bar with real margin. Notably the failure isn't confined to "mid-saturation purple contested cells" as the note suggests: even the most saturated, near-pure-color contested seats (e.g. RI at 99% D, deep solid-looking blue) only reach ~3.15 contrast, and the worst offender (MI, 60% D, contrast 2.83) is in the purple zone as expected. One correction to the item's framing: the 65 "not up in 2026" seats rendered as flat "Solid Democratic"/"Solid Republican" blocks do NOT carry per-state text labels at all (no state abbreviation/number is drawn on them) — only the 35 contested seats have labels, and their color happens to range from near-pure blue/red at the extremes to purple in the middle. So "text directly on solid red background" isn't literally happening in the strip today, but the substance of the complaint (near-black bold small text failing AA) is real and, if anything, understated — it's a uniform failure across the whole contested range, not a borderline/occasional one.
 
 **Decision:** Accept — and severity should likely be bumped from "minor–moderate" to "moderate/significant" given it's a 100%-of-cases AA failure (2.83–3.5:1, never reaching 4.5:1) rather than an edge case.
+
+**Implemented:** contrast/contested-label-color
