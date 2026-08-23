@@ -48,5 +48,5 @@ The chamber-control bar marks "51 seats to control" as the majority threshold. I
 
 **Review notes:** Confirmed wording on the live site: the chamber-control divider on the "All 100 seats" bar is labeled "51 seats to control" (and abbreviated "51 to control" directly on the bar itself). The item's underlying fact is correct — 50 seats plus a VP tiebreak is sufficient for control, so "51" is a simplification. It's not inaccurate (51 is a valid majority threshold on its own), just incomplete for a reader who knows about the tiebreak.
 
-**Decision:** Accept - Use the "majority threshold" terminology or similar.
+**Decision:** Rejected
 

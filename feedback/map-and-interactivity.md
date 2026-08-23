@@ -25,14 +25,14 @@ RI, CT, and coastal MA render as a few pixels on the state map with no zoomed in
 
 **Review notes:** Confirmed via DOM measurement. At a typical desktop map width (~950px rendered SVG), Rhode Island's bounding box measures roughly 11–13px × 16–17px on screen — by far the smallest of the mainland states (for comparison, Connecticut is ~27×27px, Massachusetts ~50–58px wide, Delaware ~18×27px). A point picked just past Massachusetts' coastline (simulating an overshoot toward RI/Cape Cod) landed on the bare `<svg>` background rather than any `path.state` element, meaning the cursor genuinely misses all state geometry there and no hover tooltip fires — consistent with the report's description of landing on "open water" with no tooltip. The claim that RI/CT/MA render as "a few pixels" is a bit of an overstatement for CT and MA specifically (they're small but not sub-pixel), but RI in particular is a legitimately tiny, easy-to-miss target with no zoom/inset/enlarged-hit-area fallback.
 
-**Decision:** Accept
+**Decision:** Discuss/Refine
 
 ## Map tooltip and seat-bar tooltip differ in richness
 See [[tooltips]] for details — related to the "looks clickable" issue above since the two elements share a visual language but not behavior/content.
 
 **Review notes:** This item is a pointer to `tooltips.md` rather than a standalone finding, so full evaluation belongs there. For this file's purposes: spot-checked map tooltips (hovering Ohio, Minnesota, Kansas, Oklahoma) show only candidate names and percentages, with no call-to-action. The seat-bar tooltip, by contrast, ends with a "Click to view on Kalshi ↗" link line. This confirms the two tooltips do differ in content/richness despite matching visual styling (dark card, same typography), which is an accurate premise for the cross-referenced discussion.
 
-**Decision:** Accept (as an accurate pointer — see `tooltips.md` for the detailed writeup)
+**Decision:** Discuss/Refine (as an accurate pointer — see `tooltips.md` for the detailed writeup)
 
 ## Map has no adjacent legend
 See [[legend-and-symbols]] for details.
