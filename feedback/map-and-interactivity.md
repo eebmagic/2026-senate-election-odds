@@ -1,6 +1,6 @@
 # Map & Interactivity
 
-## Map states look clickable but do nothing on click
+## ✅ Map states look clickable but do nothing on click
 **Severity:** moderate
 **Source:** interaction & usability review
 
@@ -11,6 +11,8 @@ SVG state paths on the "State-level control" map have `cursor: pointer` computed
 **Review notes:** Reproduced directly. DOM inspection of `#map-svg path.state` confirms `cursor: pointer` in computed style and confirms the only event listeners bound to state paths are `mousemove` and `mouseleave` (verified via the D3 internal `__on` listener registry) — there is no `click` listener anywhere on the path, no `onclick`, and the path is not wrapped in an `<a>` (`closest('a')` returns null). A synthetic click dispatched at a state's center produced no `window.open` call and no `location.href` change. By contrast, seat-bar segments (`.seg-wide`) are genuinely wrapped in `<a href="https://kalshi.com/markets/...">` tags, and hovering them shows a tooltip ending in "Click to view on Kalshi ↗" — the map's hover tooltip has no such affordance or link. So the report is accurate on every point: identical cursor/hover affordance, no click behavior, and a real behavioral gap versus the seat bar.
 
 **Decision:** Accept
+
+**Implemented:** interactivity/map-click-link — states with a 2026 race are now wrapped in a real `<a href="kalshiUrl">` (mirroring `.seg-wide`/`.seg-narrow`), the map tooltip gained a matching "Click to view on Kalshi ↗" hint, and `cursor: pointer` is now scoped via a `.linked` class to only those states (solid/uncontested states, with no single race to link to, are no longer styled as clickable). Verified live: clicking a contested state (Michigan) opened its Kalshi market page in a new tab; computed `cursor` is `pointer` on `.state.linked` and `auto` on plain `.state`.
 
 ## Small New England states are hard to hit on the map
 **Severity:** minor
