@@ -55,6 +55,12 @@ function wireTooltip(containerEl, tooltipEl, { anchorToRow = false } = {}) {
   function show(payload, event, el) {
     active = true;
     activeTriggerEl = el || null;
+    // Visual anchor: highlight the source cell itself while its tooltip is
+    // open, since the tooltip tracks the cursor rather than the cell (see
+    // move() below) so a fixed pointer/caret would need separate positioning
+    // logic. The highlight makes the tooltip-to-cell link unambiguous even
+    // when the tooltip floats away from or over neighboring cells.
+    if (activeTriggerEl) activeTriggerEl.classList.add('tip-source');
     tooltipEl.innerHTML = tooltipHtml(payload);
     tooltipEl.classList.toggle('scrollable', !!payload.scrollable);
     tooltipEl.style.display = 'block';
@@ -131,6 +137,7 @@ function wireTooltip(containerEl, tooltipEl, { anchorToRow = false } = {}) {
   function hide() {
     active = false;
     armedEl = null;
+    if (activeTriggerEl) activeTriggerEl.classList.remove('tip-source');
     activeTriggerEl = null;
     tooltipEl.style.display = 'none';
     tooltipEl.classList.remove('below');

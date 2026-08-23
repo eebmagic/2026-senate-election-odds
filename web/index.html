@@ -45,6 +45,15 @@
   .solid-block.rep { background: #b3372c; }
   .contested-wrap-wide { height: 100%; display: flex; border-left: 1px solid rgba(250,248,244,0.5); box-sizing: border-box; }
   .seg-wide { position: relative; flex: 1 1 0%; height: 100%; border-right: 1px solid rgba(250,248,244,0.5); box-sizing: border-box; cursor: pointer; color: #fff; text-decoration: none; }
+  /* Visual anchor linking an open tooltip back to its source cell (see
+     wireTooltip() in app.js): a bright inset ring on the hovered cell,
+     since the tooltip itself tracks the cursor rather than a fixed point
+     on the cell. Raised above sibling cells so the ring isn't clipped by
+     a neighbor's border. */
+  .seg-wide.tip-source, .seg-narrow.tip-source, .solid-block.tip-source, .solid-block-narrow.tip-source {
+    box-shadow: inset 0 0 0 2px #faf8f4, inset 0 0 0 4px rgba(33,31,28,0.55);
+    z-index: 1;
+  }
   .seg-label-stack { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); display: flex; flex-direction: column; align-items: center; gap: 2px; width: 100%; }
   .seg-state { font-size: 11px; font-weight: 700; letter-spacing: 0.02em; text-align: center; }
   .seg-pct { font-size: 9px; font-weight: 600; text-align: center; }
