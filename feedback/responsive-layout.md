@@ -12,7 +12,7 @@ At narrow width (~390px CSS), the horizontal seat strip reflows into a vertical 
 
 **Decision:** Accept
 
-## Seat-bar labels overlap into unreadable text at mid-range viewport widths
+## ✅ Seat-bar labels overlap into unreadable text at mid-range viewport widths
 **Severity:** significant
 **Source:** interaction & usability review
 
@@ -28,3 +28,4 @@ At a browser width around 1000px (between the full desktop layout and the mobile
 So the broken zone is roughly 768px-~950px CSS width, not just "around 1000px," and the underlying map also compresses in that same range as noted. The claim checks out and is worse/wider than the single width cited.
 
 **Decision:** Accept
+**Implemented:** layout/seat-bar-label-overlap
