@@ -29,23 +29,36 @@ function escapeHtml(s) {
 function tooltipHtml(summary, name) {
   if (!summary) return '<div class="title">' + escapeHtml(name) + '</div>';
   let html = '<div class="title">' + escapeHtml(name) + '</div>';
-  summary.seats.forEach(seat => {
-    if (!seat.isRace) {
-      html += '<div class="row"><span>' + escapeHtml(seat.senator) + '</span><span class="value">' + (seat.party === 'D' ? 'D' : 'R') + '</span></div>';
-    } else {
-      const r = seat.race;
-      html += '<div class="row"><span>' + escapeHtml(r.demCandidate) + (r.demPrimaryPending ? ' (TBD)' : '') + '</span><span class="value">D ' + fmtPct(r.demProbability) + '</span></div>';
-      html += '<div class="row"><span>' + escapeHtml(r.repCandidate) + (r.repPrimaryPending ? ' (TBD)' : '') + '</span><span class="value">R ' + fmtPct(r.repProbability) + '</span></div>';
-      if (isMaterialIndependent(r)) {
-        r.otherTickers.forEach(o => {
-          html += '<div class="row"><span>' + escapeHtml(o.candidate) + ' (I)</span><span class="value">' + fmtPct(o.probability) + '</span></div>';
-        });
-      }
-      if (r.stale) {
-        html += '<div class="row"><span>as of</span><span class="value">' + escapeHtml(r.staleSince || 'unknown') + '</span></div>';
-      }
-    }
+  const notUpSeats = summary.seats.filter(seat => !seat.isRace);
+  const raceSeat = summary.seats.find(seat => seat.isRace);
+
+  // Only label the groups when both are present -- that's the case that
+  // reads as an unlabeled mashup (one senator not up alongside the actual
+  // 2026 race candidates). A state with no 2026 race (both seats solid) or
+  // one where every seat shown is part of the race doesn't need the split.
+  if (notUpSeats.length && raceSeat) {
+    html += '<div class="group-label">Not up in 2026</div>';
+  }
+  notUpSeats.forEach(seat => {
+    html += '<div class="row"><span>' + escapeHtml(seat.senator) + '</span><span class="value">' + (seat.party === 'D' ? 'D' : 'R') + '</span></div>';
   });
+
+  if (raceSeat) {
+    if (notUpSeats.length) {
+      html += '<div class="group-label">2026 race</div>';
+    }
+    const r = raceSeat.race;
+    html += '<div class="row"><span>' + escapeHtml(r.demCandidate) + (r.demPrimaryPending ? ' (TBD)' : '') + '</span><span class="value">D ' + fmtPct(r.demProbability) + '</span></div>';
+    html += '<div class="row"><span>' + escapeHtml(r.repCandidate) + (r.repPrimaryPending ? ' (TBD)' : '') + '</span><span class="value">R ' + fmtPct(r.repProbability) + '</span></div>';
+    if (isMaterialIndependent(r)) {
+      r.otherTickers.forEach(o => {
+        html += '<div class="row"><span>' + escapeHtml(o.candidate) + ' (I)</span><span class="value">' + fmtPct(o.probability) + '</span></div>';
+      });
+    }
+    if (r.stale) {
+      html += '<div class="row"><span>as of</span><span class="value">' + escapeHtml(r.staleSince || 'unknown') + '</span></div>';
+    }
+  }
   return html;
 }
 

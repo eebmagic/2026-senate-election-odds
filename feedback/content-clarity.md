@@ -1,6 +1,6 @@
 # Content & Data Clarity
 
-## Map tooltip mixes an unrelated incumbent with the actual 2026 race, unlabeled
+## ✅ Map tooltip mixes an unrelated incumbent with the actual 2026 race, unlabeled
 **Severity:** moderate
 **Source:** content & wording review
 
@@ -11,6 +11,7 @@ Hovering Oklahoma on the map shows three unlabeled rows: "Markwayne Mullin R" (h
 **Review notes:** Reproduced on the live site. Hovering Oklahoma on the "State-level control" map (bottom of page) shows exactly three unlabeled rows: "Markwayne Mullin R" (no percentage), "Democratic party (TBD) D 2%", and "Kevin Hern R 98%" — nothing visually or textually separates the not-up-in-2026 senator from the 2026 race candidates. (Site copy reads "Democratic party (TBD)", not "(primary TBD)" as quoted in the item, but the substance is identical.) Spot-checked other states with a split/toss-up delegation (e.g. Ohio: "Bernie Moreno R" / "Sherrod Brown D 52%" / "Jon Husted R 48%"; Arkansas: "John Boozman R" / "Hallie Shoffner D 6%" / "Tom Cotton R 94%") and the same unlabeled pattern holds — this is systemic to the map tooltip component, not an Oklahoma-only quirk.
 
 **Decision:** Accept
+**Implemented:** clarity/map-tooltip-grouping — verified live: hovering Oklahoma now shows a "NOT UP IN 2026" group ("Markwayne Mullin R") separated from a "2026 RACE" group ("Democratic party (TBD) D 2%", "Kevin Hern R 98%"); confirmed on Michigan as well.
 
 ## Named candidate shown at a flat "0%"
 **Severity:** minor
