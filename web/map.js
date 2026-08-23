@@ -18,7 +18,12 @@ const FIPS_TO_POSTAL = {
 
 function fillFor(summary) {
   if (!summary) return COLORS.neutral;
-  if (summary.status === 'tossup' || summary.status === 'split') return 'url(#stripes)';
+  // Two visually distinct patterns for two unrelated conditions: diagonal
+  // stripes mean the state's two senators are (or will be) different
+  // parties (a split delegation); dots mean same party on both seats but
+  // the 2026 race is too close to call (a toss-up). See the map caption.
+  if (summary.status === 'split') return 'url(#stripes)';
+  if (summary.status === 'tossup') return 'url(#tossup-dots)';
   return summary.party === 'D' ? COLORS.dem : COLORS.rep;
 }
 
@@ -68,7 +73,10 @@ export async function renderMap(races) {
 
   svg.selectAll('*').remove();
 
-  svg.append('defs').append('pattern')
+  const defs = svg.append('defs');
+
+  // Split delegation (two different-party senators): diagonal stripes.
+  defs.append('pattern')
     .attr('id', 'stripes')
     .attr('width', 8).attr('height', 8)
     .attr('patternTransform', 'rotate(45)')
@@ -76,6 +84,18 @@ export async function renderMap(races) {
     .call(p => {
       p.append('rect').attr('width', 8).attr('height', 8).attr('fill', COLORS.rep);
       p.append('rect').attr('width', 4).attr('height', 8).attr('fill', COLORS.dem);
+    });
+
+  // Same-party toss-up (both senators the same party, but the 2026 race is
+  // too close to call): dots, so it reads as distinct from a split
+  // delegation at a glance rather than only via the tooltip.
+  defs.append('pattern')
+    .attr('id', 'tossup-dots')
+    .attr('width', 8).attr('height', 8)
+    .attr('patternUnits', 'userSpaceOnUse')
+    .call(p => {
+      p.append('rect').attr('width', 8).attr('height', 8).attr('fill', COLORS.rep);
+      p.append('circle').attr('cx', 4).attr('cy', 4).attr('r', 2).attr('fill', COLORS.dem);
     });
 
   const topology = await loadTopology();
