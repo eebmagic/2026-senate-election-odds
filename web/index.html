@@ -94,6 +94,13 @@
 
   /* Tooltip (shared by spectrum + map) */
   .tooltip { position: absolute; pointer-events: none; background: #211f1c; color: #faf8f4; padding: 10px 13px; border-radius: 4px; font-size: 12.5px; line-height: 1.5; min-width: 150px; max-height: 260px; overflow-y: auto; overflow-x: hidden; box-shadow: 0 8px 20px rgba(0,0,0,0.28); z-index: 5; transform: translate(-50%, -100%); display: none; }
+  /* Long-list variant (the "N seats not up" tooltips): unlike the small
+     cursor-following tooltips, this one needs to actually receive wheel/touch
+     scroll input once open, so it can't stay pointer-events:none. It's still
+     positioned like the others, but the mouseleave handling in app.js's
+     wireTooltip() keeps it open while the cursor moves from the trigger
+     block into the tooltip itself. */
+  .tooltip.scrollable { pointer-events: auto; scrollbar-gutter: stable; }
   /* Row-anchored tooltips (narrow layout): top/left mark the row's top-center
      by default, so the tooltip sits above it (translate -100% on Y). When
      there's no room above, .below is added and top/left instead mark the
