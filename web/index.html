@@ -113,6 +113,10 @@
 
   /* Map */
   .map-section-caption { margin-bottom: 14px; }
+  /* Repeats the seat-strip section's 4 color swatches next to the map so a
+     viewer who scrolled straight here doesn't have to scroll back up to
+     recall what each shade means (see .legend above, reused as-is). */
+  .map-legend { margin-top: 8px; margin-bottom: 4px; }
   #map-wrap { position: relative; width: 100%; aspect-ratio: 975 / 610; max-height: 560px; }
   #map-svg { width: 100%; height: 100%; display: block; }
   path.state { stroke: #faf8f4; stroke-width: 1; cursor: pointer; }
@@ -170,6 +174,12 @@
 
     <div class="map-subsection">
       <div class="section-heading">State-level control</div>
+      <div class="legend map-legend">
+        <div class="legend-item"><span class="swatch block" style="background:#2f5aa8;"></span>Solid Democratic</div>
+        <div class="legend-item"><span class="swatch block" style="background:linear-gradient(90deg,#8a5a8f,#2f5aa8);"></span>Contested, leans D</div>
+        <div class="legend-item"><span class="swatch block" style="background:linear-gradient(90deg,#b3372c,#8a5a8f);"></span>Contested, leans R</div>
+        <div class="legend-item"><span class="swatch block" style="background:#b3372c;"></span>Solid Republican</div>
+      </div>
       <div class="caption map-section-caption">Both seats combined per state. Diagonal stripes mark a split delegation (senators from different parties); dots mark a same-party toss-up (a 2026 race too close to call).</div>
       <div id="map-wrap">
         <svg id="map-svg" viewBox="0 0 975 610"></svg>
