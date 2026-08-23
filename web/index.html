@@ -58,6 +58,16 @@
     .bar-wrap-wide { display: none; }
     .bar-wrap-narrow { display: flex; }
   }
+  /* Between the mobile stacked list (<=719px) and the point where the wide
+     seat bar has room for full-size per-segment labels (>=1024px), segments
+     are too narrow for an 11px state abbreviation without it running into
+     neighboring segments. Scale the abbreviation down instead of hiding it;
+     overflow:hidden on the segment is a safety net in case a label still
+     doesn't fit. */
+  .seg-wide { overflow: hidden; }
+  @media (min-width: 720px) and (max-width: 1023px) {
+    .seg-wide .seg-state { font-size: 7px; letter-spacing: 0; }
+  }
   .bar-inner-narrow { position: relative; width: 100%; max-width: 300px; height: 980px; }
   .solid-caption { text-align: center; font-size: 11px; font-weight: 700; }
   .solid-caption.dem { color: #1c3f7a; margin-bottom: 6px; }
