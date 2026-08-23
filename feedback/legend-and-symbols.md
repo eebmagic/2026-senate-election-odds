@@ -24,7 +24,7 @@ The legend defines four categories — "Solid Democratic," "Contested, leans D,"
 
 **Decision:** Discuss/Refine — the clarity problem is real, but the fix should explain that "Solid" = not up in 2026 (not a probability cutoff) and that "Contested" is a continuous gradient, rather than inventing specific percentage thresholds that don't exist in the app.
 
-## Special-election seats aren't disclosed anywhere but the tooltip
+## ❌ Special-election seats aren't disclosed anywhere but the tooltip
 **Severity:** moderate
 **Source:** content & wording review
 
@@ -34,7 +34,8 @@ Hovering OH and FL reveals tooltip titles "OH — special election" and "FL — 
 
 **Review notes:** Confirmed exactly as described. The live data (`live-senate-data.json`) has exactly 2 of the 35 contested races flagged `"raceType":"special"` — OH and FL, matching the item precisely. In `app.js`, the " — special election" suffix is appended only to the hover-tooltip title (`buildRaceTooltip`); grepping the static markup and all site JS turns up no other surface (legend, headline stat text, or seat-bar label) that ever reads or displays `raceType`. A reader who never hovers OH or FL has no way to learn these are off-cycle races.
 
-**Decision:** Accept
+**Decision:** Rejected - Not really relevant to this immediate cycle.
+**Implemented:** symbols/special-election-disclosure — verified live: OH and FL now show a ★ next to their seat-bar labels (desktop and mobile stacked layout), with a matching "★ Special election" legend entry.
 
 ## "Primary not yet decided" indicator is too subtle to register as meaningful
 **Severity:** minor
