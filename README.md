@@ -10,7 +10,7 @@ script.py                        fetches Kalshi + writes web/live-senate-data.js
 scripts/
   event_ticker_map.json          event_ticker -> { state, raceType }, checked-in, changes rarely
   build_live_data.py             the transform script.py calls: raw discovery dict -> live-senate-data.json shape
-live_data_snapshots/             gitignored per-run audit trail written by script.py, newest N kept
+live_data_snapshots/             tracked per-run audit trail written by script.py, newest N kept (see --keep-snapshots)
 web/                             the published site (static, no build step)
   index.html / app.js / map.js / senate-shared.js
   vendor/                        d3, topojson-client, us-atlas topology (vendored, no CDN)

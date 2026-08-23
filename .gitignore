@@ -1,8 +1,4 @@
 *.swp
 **/*.swp
 
-# Per-run timestamped copies of web/live-senate-data.json's output
-# (script.py); web/live-senate-data.json itself is the one copy that stays
-# a tracked file.
-/live_data_snapshots/
 __pycache__/
