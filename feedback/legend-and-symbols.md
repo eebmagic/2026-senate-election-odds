@@ -38,7 +38,7 @@ Hovering OH and FL reveals tooltip titles "OH — special election" and "FL — 
 **Implemented:** symbols/special-election-disclosure — verified live: OH and FL now show a ★ next to their seat-bar labels (desktop and mobile stacked layout), with a matching "★ Special election" legend entry.
 **Merge status:** Closed, not merged (PR #9)
 
-## "Primary not yet decided" indicator is too subtle to register as meaningful
+## ✅ "Primary not yet decided" indicator is too subtle to register as meaningful
 **Severity:** minor
 **Source:** visual design review
 
@@ -49,6 +49,7 @@ The small white sliver marking "primary not yet decided" appears as a 2-3px tall
 **Review notes:** Confirmed and, if anything, understated. Computed styles show `.pending-mark-h` renders at 5px tall against an 88px-tall cell (~6% of the cell's height), anchored to the bottom edge, with `background-color: rgb(250, 248, 244)` — which is exactly identical to the page's `body` background color (also `rgb(250, 248, 244)`). It has no border, icon, or pattern of its own in the chart (only the legend key's swatch has a 1px border); in the actual bar it is purely a page-colored cutout in the colored cell, i.e., visually indistinguishable from a rendering gap. It currently appears on 7 states: RI, DE, MA, NH, AK, SC, OK — the item lists 6 of these (misses AK), which doesn't change the substance.
 
 **Decision:** Accept
+**Implemented:** symbols/primary-pending-marker — replaced the page-colored 5px sliver (`.pending-mark-h`/`.pending-mark-v`, which matched the body background exactly) with a small bordered "?" badge, sized/styled consistently with the ★ special-election marker. Updated the legend's "Primary not yet decided" swatch to match. Verified live: RI, DE, MA, NH, AK, SC, and OK all show a clearly visible white "?" badge with a dark border at the bottom of their seat-bar cells.
 
 ## State map has no adjacent legend
 **Severity:** moderate
