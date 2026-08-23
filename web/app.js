@@ -55,12 +55,6 @@ function wireTooltip(containerEl, tooltipEl, { anchorToRow = false } = {}) {
   function show(payload, event, el) {
     active = true;
     activeTriggerEl = el || null;
-    // Visual anchor: highlight the source cell itself while its tooltip is
-    // open, since the tooltip tracks the cursor rather than the cell (see
-    // move() below) so a fixed pointer/caret would need separate positioning
-    // logic. The highlight makes the tooltip-to-cell link unambiguous even
-    // when the tooltip floats away from or over neighboring cells.
-    if (activeTriggerEl) activeTriggerEl.classList.add('tip-source');
     tooltipEl.innerHTML = tooltipHtml(payload);
     tooltipEl.classList.toggle('scrollable', !!payload.scrollable);
     tooltipEl.style.display = 'block';
@@ -87,12 +81,12 @@ function wireTooltip(containerEl, tooltipEl, { anchorToRow = false } = {}) {
     clampToViewport();
   }
 
-  // Narrow layout only: rows are thin (the bar is one tall column), so
-  // positioning "above the cursor" -- wherever within the row it happened to
-  // land -- can still land the tooltip on top of the tapped row itself.
-  // Anchor to the row's actual box instead: prefer above it, but flip below
-  // when there isn't room, using the tooltip's real rendered height rather
-  // than a guess.
+  // Anchor to the hovered/tapped row's actual box instead of the cursor:
+  // prefer above it, but flip below when there isn't room, using the
+  // tooltip's real rendered height rather than a guess. This is what gives
+  // the tooltip a stable height between cells in the same row -- every
+  // segment shares the row's top edge, so the tooltip always opens at the
+  // same Y regardless of which cell triggered it.
   function positionAboveOrBelowRow(el) {
     const containerRect = containerEl.getBoundingClientRect();
     const elRect = el.getBoundingClientRect();
@@ -113,6 +107,23 @@ function wireTooltip(containerEl, tooltipEl, { anchorToRow = false } = {}) {
     }
 
     clampToViewport();
+    pointTailAt(centerX);
+  }
+
+  // Aim the tooltip's CSS tail (see #tooltip-wide::after / #tooltip-narrow::after
+  // in index.html) at the horizontal center of the row/cell that opened it.
+  // clampToViewport() may have nudged the whole tooltip sideways to keep it
+  // on-screen, so the tail's offset is computed against the tooltip's actual
+  // rendered left edge -- undoing the translateX(-50%) centering transform --
+  // rather than its `left` style value, and clamped so it can't poke out past
+  // the box's own rounded corners.
+  function pointTailAt(targetCenterX) {
+    const containerRect = containerEl.getBoundingClientRect();
+    const tRect = tooltipEl.getBoundingClientRect();
+    const tooltipLeft = tRect.left - containerRect.left;
+    const margin = 10;
+    const tailX = Math.max(margin, Math.min(tRect.width - margin, targetCenterX - tooltipLeft));
+    tooltipEl.style.setProperty('--tail-x', tailX + 'px');
   }
 
   // The tooltip is positioned relative to its bar container, which on the
@@ -137,7 +148,6 @@ function wireTooltip(containerEl, tooltipEl, { anchorToRow = false } = {}) {
   function hide() {
     active = false;
     armedEl = null;
-    if (activeTriggerEl) activeTriggerEl.classList.remove('tip-source');
     activeTriggerEl = null;
     tooltipEl.style.display = 'none';
     tooltipEl.classList.remove('below');
@@ -339,7 +349,7 @@ function renderWideBar(vals) {
 
   const barEl = document.getElementById('bar-wide');
   const tooltipEl = document.getElementById('tooltip-wide');
-  const tip = wireTooltip(barEl, tooltipEl);
+  const tip = wireTooltip(barEl, tooltipEl, { anchorToRow: true });
 
   tip.bindHover(barEl.querySelector('[data-tip="dem-solid"]'), vals.demBlockTooltip);
   tip.bindHover(barEl.querySelector('[data-tip="rep-solid"]'), vals.repBlockTooltip);

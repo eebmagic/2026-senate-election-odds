@@ -45,15 +45,6 @@
   .solid-block.rep { background: #b3372c; }
   .contested-wrap-wide { height: 100%; display: flex; border-left: 1px solid rgba(250,248,244,0.5); box-sizing: border-box; }
   .seg-wide { position: relative; flex: 1 1 0%; height: 100%; border-right: 1px solid rgba(250,248,244,0.5); box-sizing: border-box; cursor: pointer; color: #fff; text-decoration: none; }
-  /* Visual anchor linking an open tooltip back to its source cell (see
-     wireTooltip() in app.js): a bright inset ring on the hovered cell,
-     since the tooltip itself tracks the cursor rather than a fixed point
-     on the cell. Raised above sibling cells so the ring isn't clipped by
-     a neighbor's border. */
-  .seg-wide.tip-source, .seg-narrow.tip-source, .solid-block.tip-source, .solid-block-narrow.tip-source {
-    box-shadow: inset 0 0 0 1.5px #c98a2c, inset 0 0 0 3px rgba(33,31,28,0.55);
-    z-index: 1;
-  }
   .seg-label-stack { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); display: flex; flex-direction: column; align-items: center; gap: 2px; width: 100%; }
   .seg-state { font-size: 11px; font-weight: 700; letter-spacing: 0.02em; text-align: center; }
   .seg-pct { font-size: 9px; font-weight: 600; text-align: center; }
@@ -125,11 +116,28 @@
      wireTooltip() keeps it open while the cursor moves from the trigger
      block into the tooltip itself. */
   .tooltip.scrollable { pointer-events: auto; scrollbar-gutter: stable; }
-  /* Row-anchored tooltips (narrow layout): top/left mark the row's top-center
-     by default, so the tooltip sits above it (translate -100% on Y). When
-     there's no room above, .below is added and top/left instead mark the
-     row's bottom-center, so the tooltip sits below it. */
+  /* Row-anchored tooltips (both the wide and narrow seat-bar layouts): top/left
+     mark the row's top-center by default, so the tooltip sits above it
+     (translate -100% on Y) at a stable height regardless of which cell in
+     the row triggered it. When there's no room above, .below is added and
+     top/left instead mark the row's bottom-center, so the tooltip sits
+     below it. */
   .tooltip.below { transform: translate(-50%, 0); }
+  /* Visual anchor linking an open tooltip back to its source cell: a small
+     triangular tail pointing at the row that opened it, aimed horizontally
+     via --tail-x (set in positionAboveOrBelowRow() in app.js -- see
+     anchorToRow in wireTooltip()). Scoped to the seat-bar's own tooltips;
+     the map's tooltip (#map-tooltip) still tracks the cursor directly and
+     is unaffected. The scrollable long-list variant has no single source
+     cell to point at, so it gets no tail. */
+  #tooltip-wide::after, #tooltip-narrow::after { content: ''; position: absolute; left: var(--tail-x, 50%); transform: translateX(-50%); border: 6px solid transparent; }
+  #tooltip-wide:not(.below)::after, #tooltip-narrow:not(.below)::after { top: 100%; border-top-color: #211f1c; }
+  #tooltip-wide.below::after, #tooltip-narrow.below::after { bottom: 100%; border-bottom-color: #211f1c; }
+  #tooltip-wide.scrollable::after, #tooltip-narrow.scrollable::after { display: none; }
+  /* The tail renders just outside the box; let it show through instead of
+     being clipped by the base rule's overflow (irrelevant here anyway --
+     these two non-scrollable variants never approach the 260px cap). */
+  #tooltip-wide:not(.scrollable), #tooltip-narrow:not(.scrollable) { overflow: visible; }
   .tooltip .title { font-weight: 700; font-size: 13.5px; margin-bottom: 3px; white-space: nowrap; }
   /* Sub-heading inside a tooltip that separates unrelated groups of rows,
      e.g. the map tooltip's "not up in 2026" senator vs. the actual 2026
