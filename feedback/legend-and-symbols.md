@@ -36,6 +36,7 @@ Hovering OH and FL reveals tooltip titles "OH — special election" and "FL — 
 
 **Decision:** Rejected - Not really relevant to this immediate cycle.
 **Implemented:** symbols/special-election-disclosure — verified live: OH and FL now show a ★ next to their seat-bar labels (desktop and mobile stacked layout), with a matching "★ Special election" legend entry.
+**Merge status:** Closed, not merged (PR #9)
 
 ## "Primary not yet decided" indicator is too subtle to register as meaningful
 **Severity:** minor
