@@ -59,6 +59,25 @@ function wireTooltip(containerEl, tooltipEl) {
     const rect = containerEl.getBoundingClientRect();
     tooltipEl.style.left = (event.clientX - rect.left) + 'px';
     tooltipEl.style.top = (event.clientY - rect.top) + 'px';
+    clampToViewport();
+  }
+
+  // The tooltip is positioned relative to its bar container, which on the
+  // narrow layout is nearly as wide as the screen -- a tap near either edge
+  // (or a long candidate name) can push the tooltip's centered box past the
+  // actual viewport edge. Nudge it back in after layout, using real
+  // dimensions rather than guessing a max tooltip width up front.
+  function clampToViewport() {
+    const margin = 8;
+    const tRect = tooltipEl.getBoundingClientRect();
+    let dx = 0, dy = 0;
+    if (tRect.left < margin) dx = margin - tRect.left;
+    else if (tRect.right > window.innerWidth - margin) dx = (window.innerWidth - margin) - tRect.right;
+    if (tRect.top < margin) dy = margin - tRect.top;
+    if (dx || dy) {
+      tooltipEl.style.left = (parseFloat(tooltipEl.style.left) + dx) + 'px';
+      tooltipEl.style.top = (parseFloat(tooltipEl.style.top) + dy) + 'px';
+    }
   }
   function hide() {
     active = false;
