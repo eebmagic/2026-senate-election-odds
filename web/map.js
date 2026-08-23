@@ -139,18 +139,66 @@ export async function renderMap(races) {
       const postal = FIPS_TO_POSTAL[d.id];
       return fillFor(byPostal[postal]);
     })
-    .on('mousemove', (event, d) => {
+    .on('mouseenter', (event, d) => {
       const postal = FIPS_TO_POSTAL[d.id];
       if (postal === 'DC' || postal === 'PR') return;
-      const rect = wrap.getBoundingClientRect();
-      const x = event.clientX - rect.left;
-      const y = event.clientY - rect.top;
       tooltip
         .style('display', 'block')
-        .style('left', Math.min(x + 14, rect.width - 240) + 'px')
-        .style('top', Math.max(y - 60, 4) + 'px')
-        .style('transform', 'none')
         .html(tooltipHtml(byPostal[postal], d.properties.name));
+      positionTooltip(event.currentTarget);
     })
     .on('mouseleave', () => tooltip.style('display', 'none'));
+
+  // Anchor the tooltip to the hovered state's shape instead of the cursor --
+  // same stable-position + tail treatment as the seat-bar's tooltips (see
+  // positionAboveOrBelowRow()/pointTailAt() in app.js's wireTooltip()).
+  // Large/irregular state shapes mean the anchor point (the path's own
+  // bounding box) won't always sit exactly under the cursor, but it keeps
+  // the tooltip from chasing the mouse and gives every hover a real visual
+  // link back to its source state via the tail.
+  function positionTooltip(pathEl) {
+    const wrapRect = wrap.getBoundingClientRect();
+    const elRect = pathEl.getBoundingClientRect();
+    const gap = 8;
+    const centerX = (elRect.left + elRect.width / 2) - wrapRect.left;
+
+    tooltip.classed('below', false);
+    tooltip.style('left', centerX + 'px');
+    tooltip.style('top', (elRect.top - gap - wrapRect.top) + 'px');
+
+    const tHeight = tooltip.node().getBoundingClientRect().height;
+    const spaceAbove = elRect.top;
+    const spaceBelow = window.innerHeight - elRect.bottom;
+    if (spaceAbove < tHeight + gap && spaceBelow > spaceAbove) {
+      tooltip.classed('below', true);
+      tooltip.style('top', (elRect.bottom + gap - wrapRect.top) + 'px');
+    }
+
+    clampToWrap();
+    pointTailAt(centerX);
+  }
+
+  function clampToWrap() {
+    const margin = 8;
+    const wrapRect = wrap.getBoundingClientRect();
+    const tRect = tooltip.node().getBoundingClientRect();
+    let dx = 0, dy = 0;
+    if (tRect.left < wrapRect.left + margin) dx = (wrapRect.left + margin) - tRect.left;
+    else if (tRect.right > wrapRect.right - margin) dx = (wrapRect.right - margin) - tRect.right;
+    if (tRect.top < margin) dy = margin - tRect.top;
+    else if (tRect.bottom > window.innerHeight - margin) dy = (window.innerHeight - margin) - tRect.bottom;
+    if (dx || dy) {
+      tooltip.style('left', (parseFloat(tooltip.style('left')) + dx) + 'px');
+      tooltip.style('top', (parseFloat(tooltip.style('top')) + dy) + 'px');
+    }
+  }
+
+  function pointTailAt(targetCenterX) {
+    const wrapRect = wrap.getBoundingClientRect();
+    const tRect = tooltip.node().getBoundingClientRect();
+    const tooltipLeft = tRect.left - wrapRect.left;
+    const margin = 10;
+    const tailX = Math.max(margin, Math.min(tRect.width - margin, targetCenterX - tooltipLeft));
+    tooltip.style('--tail-x', tailX + 'px');
+  }
 }

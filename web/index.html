@@ -132,21 +132,19 @@
      top/left instead mark the row's bottom-center, so the tooltip sits
      below it. */
   .tooltip.below { transform: translate(-50%, 0); }
-  /* Visual anchor linking an open tooltip back to its source cell: a small
-     triangular tail pointing at the row that opened it, aimed horizontally
-     via --tail-x (set in positionAboveOrBelowRow() in app.js -- see
-     anchorToRow in wireTooltip()). Scoped to the seat-bar's own tooltips;
-     the map's tooltip (#map-tooltip) still tracks the cursor directly and
-     is unaffected. The scrollable long-list variant has no single source
-     cell to point at, so it gets no tail. */
-  #tooltip-wide::after, #tooltip-narrow::after { content: ''; position: absolute; left: var(--tail-x, 50%); transform: translateX(-50%); border: 6px solid transparent; }
-  #tooltip-wide:not(.below)::after, #tooltip-narrow:not(.below)::after { top: 100%; border-top-color: #211f1c; }
-  #tooltip-wide.below::after, #tooltip-narrow.below::after { bottom: 100%; border-bottom-color: #211f1c; }
+  /* Visual anchor linking an open tooltip back to its source cell/state: a
+     small triangular tail pointing at whatever opened it, aimed horizontally
+     via --tail-x (set in positionAboveOrBelowRow() in app.js and
+     positionTooltip() in map.js). The scrollable long-list variant has no
+     single source cell to point at, so it gets no tail. */
+  #tooltip-wide::after, #tooltip-narrow::after, #map-tooltip::after { content: ''; position: absolute; left: var(--tail-x, 50%); transform: translateX(-50%); border: 6px solid transparent; }
+  #tooltip-wide:not(.below)::after, #tooltip-narrow:not(.below)::after, #map-tooltip:not(.below)::after { top: 100%; border-top-color: #211f1c; }
+  #tooltip-wide.below::after, #tooltip-narrow.below::after, #map-tooltip.below::after { bottom: 100%; border-bottom-color: #211f1c; }
   #tooltip-wide.scrollable::after, #tooltip-narrow.scrollable::after { display: none; }
   /* The tail renders just outside the box; let it show through instead of
      being clipped by the base rule's overflow (irrelevant here anyway --
-     these two non-scrollable variants never approach the 260px cap). */
-  #tooltip-wide:not(.scrollable), #tooltip-narrow:not(.scrollable) { overflow: visible; }
+     these tooltip variants never approach the 260px cap). */
+  #tooltip-wide:not(.scrollable), #tooltip-narrow:not(.scrollable), #map-tooltip { overflow: visible; }
   .tooltip .title { font-weight: 700; font-size: 13.5px; margin-bottom: 3px; white-space: nowrap; }
   /* Sub-heading inside a tooltip that separates unrelated groups of rows,
      e.g. the map tooltip's "not up in 2026" senator vs. the actual 2026
