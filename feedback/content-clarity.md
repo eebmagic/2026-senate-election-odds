@@ -12,6 +12,7 @@ Hovering Oklahoma on the map shows three unlabeled rows: "Markwayne Mullin R" (h
 
 **Decision:** Accept
 **Implemented:** clarity/map-tooltip-grouping — verified live: hovering Oklahoma now shows a "NOT UP IN 2026" group ("Markwayne Mullin R") separated from a "2026 RACE" group ("Democratic party (TBD) D 2%", "Kevin Hern R 98%"); confirmed on Michigan as well.
+**Merge status:** Merged into main (PR #4, `clarity/map-tooltip-grouping`)
 
 ## Named candidate shown at a flat "0%"
 **Severity:** minor

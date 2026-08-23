@@ -12,6 +12,7 @@ At narrow width (~390px CSS), the horizontal seat strip reflows into a vertical 
 
 **Decision:** Accept
 **Implemented:** layout/mobile-empty-block — verified live at 390px CSS width (via an iframe test harness, since the browser extension's resize doesn't affect `window.innerWidth` in this environment): both "not up" blocks now render at a capped ~60px height instead of a ~280-300px empty rectangle.
+**Merge status:** Merged into main (PR #6)
 
 ## ✅ Seat-bar labels overlap into unreadable text at mid-range viewport widths
 **Severity:** significant
