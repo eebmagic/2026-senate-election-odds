@@ -1,6 +1,6 @@
 # Responsive Layout
 
-## Mobile layout produces a large, empty solid-color block
+## ✅ Mobile layout produces a large, empty solid-color block
 **Severity:** moderate
 **Source:** visual design review
 
@@ -11,6 +11,7 @@ At narrow width (~390px CSS), the horizontal seat strip reflows into a vertical 
 **Review notes:** Reproduced exactly as described at 386px CSS width. Both the "34 D seats not up" block at the top and the "31 R seats not up" block at the bottom of the stacked seat list render as large solid-color rectangles roughly 280-300px tall with no content inside, sitting above/below the individual per-state rows. It does read like a rendering glitch — visually indistinguishable from an empty/broken element rather than a data segment. Confirmed via screenshot at innerWidth 386.
 
 **Decision:** Accept
+**Implemented:** layout/mobile-empty-block — verified live at 390px CSS width (via an iframe test harness, since the browser extension's resize doesn't affect `window.innerWidth` in this environment): both "not up" blocks now render at a capped ~60px height instead of a ~280-300px empty rectangle.
 
 ## ✅ Seat-bar labels overlap into unreadable text at mid-range viewport widths
 **Severity:** significant
