@@ -9,6 +9,7 @@
 
 import {
   SOLID_SEATS,
+  STATE_NAMES,
   colorForDemProb,
   fmtPct,
   seatPartyResolved,
@@ -222,7 +223,7 @@ function buildRaceTooltip(r) {
   if (isMaterialIndependent(r)) {
     r.otherTickers.forEach(o => rows.push({ label: o.candidate + ' (I)', value: fmtPct(o.probability) }));
   }
-  let title = r.state + (r.raceType === 'special' ? ' — special election' : '');
+  let title = (STATE_NAMES[r.state] || r.state) + (r.raceType === 'special' ? ' — special election' : '');
   if (r.stale) title += ' (as of ' + formatDate(r.staleSince) + ')';
   return { title, rows, href: r.kalshiUrl };
 }
