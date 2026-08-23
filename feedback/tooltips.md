@@ -14,6 +14,8 @@ Hovering the large solid-color block on the seat bar (e.g. "34 D seats not up" /
 
 **Implemented:** tooltips/seats-not-up-scroll
 
+**Merge status:** Merged into main
+
 ## Hover tooltip has no visual anchor to its trigger
 **Severity:** minor
 **Source:** visual design review

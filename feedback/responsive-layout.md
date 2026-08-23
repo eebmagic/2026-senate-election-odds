@@ -29,3 +29,4 @@ So the broken zone is roughly 768px-~950px CSS width, not just "around 1000px," 
 
 **Decision:** Accept
 **Implemented:** layout/seat-bar-label-overlap
+**Merge status:** Merged into main

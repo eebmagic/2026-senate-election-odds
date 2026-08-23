@@ -25,3 +25,5 @@ The small bold state-abbreviation/probability/party labels are rendered in near-
 **Decision:** Accept — and severity should likely be bumped from "minor–moderate" to "moderate/significant" given it's a 100%-of-cases AA failure (2.83–3.5:1, never reaching 4.5:1) rather than an edge case.
 
 **Implemented:** contrast/contested-label-color
+
+**Merge status:** Merged into main
