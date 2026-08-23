@@ -26,6 +26,27 @@ export const COLORS = {
 export const TOSSUP_LOW = 0.40;
 export const TOSSUP_HIGH = 0.60;
 
+// USPS postal code -> full state name, for tooltip headers (app.js's
+// buildRaceTooltip()) that would otherwise show a redundant abbreviation
+// right next to the segment's own on-cell abbreviation label. Mirrors the
+// set map.js's FIPS_TO_POSTAL covers (50 states + DC + PR), though only the
+// 50 states + DC ever actually appear in live race data.
+export const STATE_NAMES = {
+  AL: 'Alabama', AK: 'Alaska', AZ: 'Arizona', AR: 'Arkansas', CA: 'California',
+  CO: 'Colorado', CT: 'Connecticut', DE: 'Delaware', DC: 'District of Columbia',
+  FL: 'Florida', GA: 'Georgia', HI: 'Hawaii', ID: 'Idaho', IL: 'Illinois',
+  IN: 'Indiana', IA: 'Iowa', KS: 'Kansas', KY: 'Kentucky', LA: 'Louisiana',
+  ME: 'Maine', MD: 'Maryland', MA: 'Massachusetts', MI: 'Michigan',
+  MN: 'Minnesota', MS: 'Mississippi', MO: 'Missouri', MT: 'Montana',
+  NE: 'Nebraska', NV: 'Nevada', NH: 'New Hampshire', NJ: 'New Jersey',
+  NM: 'New Mexico', NY: 'New York', NC: 'North Carolina', ND: 'North Dakota',
+  OH: 'Ohio', OK: 'Oklahoma', OR: 'Oregon', PA: 'Pennsylvania',
+  RI: 'Rhode Island', SC: 'South Carolina', SD: 'South Dakota',
+  TN: 'Tennessee', TX: 'Texas', UT: 'Utah', VT: 'Vermont', VA: 'Virginia',
+  WA: 'Washington', WV: 'West Virginia', WI: 'Wisconsin', WY: 'Wyoming',
+  PR: 'Puerto Rico'
+};
+
 // 65 seats not up for election in 2026.
 export const SOLID_SEATS = [
   // -- other senator in each of the 35 states with a 2026 race --

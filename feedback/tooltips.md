@@ -16,7 +16,7 @@ Hovering the large solid-color block on the seat bar (e.g. "34 D seats not up" /
 
 **Merge status:** Merged into main
 
-## Hover tooltip has no visual anchor to its trigger
+## ✅ Hover tooltip has no visual anchor to its trigger
 **Severity:** minor
 **Source:** visual design review
 
@@ -27,6 +27,10 @@ The dark tooltip that appears on hovering a seat cell (e.g., "FL — special ele
 **Review notes:** Reproduced. Hovering a seat cell (checked VA, GA, OH) shows the dark card positioned above/left of the cursor with no caret, pointer, or connecting element — confirmed in CSS that `.tooltip` defines no `::before`/`::after` arrow. It does visually overlap and obscure the row of cell labels directly beneath it (a VA hover covered the state-code text for the NJ/NM/CO/OR/DE/MA/VA cells in the row below in one screenshot). That said, since the tooltip actively tracks the cursor position (`move()` in app.js sets `tooltip.style.left/top` to `event.clientX/Y` on every `mousemove`), the cursor itself stays a fairly strong proximity cue in practice — the ambiguity is real but probably milder than "minor" implies in a dense strip, since the pointer is always right at the tooltip's corner.
 
 **Decision:** Accept
+
+**Implemented:** tooltips/visual-anchor
+
+Revised approach: rather than a halo on the source cell, the tooltip itself now anchors to the row (`positionAboveOrBelowRow()` in `web/app.js`'s `wireTooltip()`, via `anchorToRow: true` — already used by the narrow layout, now also applied to the wide bar) instead of following the cursor. This gives it a stable height above the bar regardless of which cell triggered it, and a small CSS triangle "tail" (`#tooltip-wide::after`/`#tooltip-narrow::after` in `web/index.html`, aimed via a `--tail-x` custom property set in `pointTailAt()`) points down (or up, when flipped below) at the exact cell that opened it — correctly re-aimed even when the tooltip itself gets nudged sideways to stay on-screen (e.g. RI at the left edge). The scrollable "N seats not up" list tooltip gets no tail (no single cell to point at). The map's tooltip (`#map-tooltip`) is untouched — still cursor-following, out of scope. Verified live on VA (wide, middle), RI (wide, edge-clamped), the solid block (wide), and VA (narrow/mobile stacked layout).
 
 ## Map tooltip and seat-bar tooltip differ in richness, inconsistently
 **Severity:** minor
