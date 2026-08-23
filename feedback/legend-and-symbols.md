@@ -49,7 +49,7 @@ The small white sliver marking "primary not yet decided" appears as a 2-3px tall
 
 **Decision:** Accept
 
-## State map has no adjacent legend
+## ✅ State map has no adjacent legend
 **Severity:** moderate
 **Source:** visual design review
 
@@ -60,3 +60,4 @@ The "State-level control" map (scrolled well below the seat-strip legend) reuses
 **Review notes:** Confirmed visually. The "State-level control" section, several hundred pixels below the seat-strip chart, has only its one-line caption ("Both seats combined per state. Diagonal stripes mark a split delegation or a 2026 toss-up race.") — no color swatches are repeated near it. The full legend (Solid Democratic / Contested leans D / Contested leans R / Solid Republican, plus the independent-polling and primary-pending marker keys) lives only up in the seat-strip section. A viewer landing on or scrolling directly to the map has no adjacent key for the color coding.
 
 **Decision:** Accept
+**Implemented:** symbols/map-adjacent-legend — verified live: a 4-swatch legend now renders directly under the "State-level control" heading.
