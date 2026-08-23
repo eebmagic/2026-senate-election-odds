@@ -49,6 +49,15 @@
   .seg-state { font-size: 11px; font-weight: 700; letter-spacing: 0.02em; text-align: center; }
   .seg-pct { font-size: 9px; font-weight: 600; text-align: center; }
   .seg-party { font-size: 8px; font-weight: 700; text-align: center; }
+  /* Hover cue for the contested-race links: the global `a:hover` rule below
+     switches text to a dark blue, which would fail the WCAG AA contrast fix
+     just applied to these labels' white-on-colored-background text (see
+     contrast/contested-label-color). Keep the color and use extra boldness
+     as the hover affordance instead. */
+  .seg-wide:hover, .seg-narrow:hover { color: #fff; }
+  .seg-wide:hover .seg-state, .seg-narrow:hover .seg-state,
+  .seg-wide:hover .seg-pct, .seg-narrow:hover .seg-pct,
+  .seg-wide:hover .seg-party, .seg-narrow:hover .seg-party { font-weight: 900; }
   .ind-mark-h { position: absolute; top: 0; left: 0; right: 0; height: 3px; background: #c98a2c; }
   /* Badge marking "primary not yet decided" -- a plain page-colored sliver
      used to read as a rendering artifact rather than an intentional status
