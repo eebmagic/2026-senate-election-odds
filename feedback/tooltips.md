@@ -1,6 +1,6 @@
 # Tooltips
 
-## Truncated "seats not up" tooltip has no scroll or overflow indicator
+## ✅ Truncated "seats not up" tooltip has no scroll or overflow indicator
 **Severity:** significant
 **Source:** interaction & usability review
 
@@ -11,6 +11,8 @@ Hovering the large solid-color block on the seat bar (e.g. "34 D seats not up" /
 **Review notes:** Reproduced exactly at http://localhost:8000. Hovering the solid "34 D seats not up" block shows ~13 of 34 rows (AZ Mark Kelly through MA Elizabeth Warren, matching the described cutoff point almost exactly), then cuts off with a clean flat bottom edge — no scrollbar, fade, or "+N more" indicator, confirmed visually. Checked the CSS in `web/index.html` line 86: `.tooltip { ... max-height: 260px; overflow-y: auto; ... pointer-events: none; ... }`. The `overflow-y: auto` turns out to be dead code in practice: because the tooltip has `pointer-events: none`, it can never be the hit-test target for a wheel event, so scrolling while hovering it scrolls the underlying page instead (confirmed empirically — a real mouse-wheel scroll over the open tooltip moved `window.scrollY` and left the tooltip's own `scrollTop` at 0, then closed the tooltip entirely since the cursor fell off the trigger element). So this isn't just a missing visual affordance — the remaining ~21 names are completely unreachable by any means. If anything this is worse than described.
 
 **Decision:** Accept
+
+**Implemented:** tooltips/seats-not-up-scroll
 
 ## Hover tooltip has no visual anchor to its trigger
 **Severity:** minor
