@@ -1,17 +1,20 @@
 #!/usr/bin/env python3
 """
-Kalshi discovery fetch: pulls raw market data for every 2026 Senate race
-(plus the CONTROLS-2026 chamber-control market). Each run writes its own
-timestamped copy under discovery_snapshots/ (an append-only audit trail --
-nothing is ever overwritten there) and then, run health permitting, atomically
-repoints latest_kalshi_discovery.json -- the stable path
-scripts/build_live_data.py reads as its input contract -- at that new
-snapshot. See README.md's "Rebuild logic".
+End-to-end Kalshi -> web/live-senate-data.json pipeline. Fetches raw market
+data for every 2026 Senate race (plus the CONTROLS-2026 chamber-control
+market), transforms it in-memory via scripts/build_live_data.py's build()
+(normalizing outcome prices, deriving primary-pending flags, computing each
+race's Kalshi URL, carrying forward stale races when a fetch failed), and
+writes the result straight to web/live-senate-data.json -- the file
+web/app.js fetches at runtime.
 
-If too many tickers failed this run (see FAILURE_RATE_ALERT_THRESHOLD), the
-snapshot is still written for debugging but "latest" is left pointing at the
-previous good run instead, so a bad pull never becomes the new source of
-truth. Pass --force-promote to override that.
+Each run also writes its own timestamped copy under live_data_snapshots/ (an
+append-only audit trail -- nothing is ever overwritten there) before
+atomically repointing web/live-senate-data.json at it. If too many tickers
+failed this run (see FAILURE_RATE_ALERT_THRESHOLD), the snapshot is still
+written for debugging but web/live-senate-data.json is left on the previous
+good run instead, so one bad pull can never clobber the live site with mostly
+stale/empty data. Pass --force-promote to override that.
 
 The event ticker list is NOT hardcoded here; it's read from the checked-in
 scripts/event_ticker_map.json so this script and the transform step can never
@@ -25,15 +28,13 @@ KXSENATELA-26NOV. This is encoded in event_ticker_map.json, not here.
 
 Usage:
     python3 script.py
-    python3 script.py --preview-output live-senate-data.preview.json
-    python3 script.py --skip-preview
-    python3 script.py --discovery-output /tmp/discovery.json --dry-run
+    python3 script.py --dry-run
+    python3 script.py --output /tmp/live-senate-data.json --keep-snapshots 0
 """
 import argparse
 import json
 import os
 import random
-import subprocess
 import sys
 import time
 import urllib.error
@@ -45,11 +46,9 @@ BASE = "https://external-api.kalshi.com/trade-api/v2/markets"
 
 ROOT = Path(__file__).resolve().parent
 EVENT_MAP_PATH = ROOT / "scripts" / "event_ticker_map.json"
-BUILD_SCRIPT_PATH = ROOT / "scripts" / "build_live_data.py"
-DISCOVERY_OUTPUT_PATH = ROOT / "latest_kalshi_discovery.json"
-PREVIEW_OUTPUT_PATH = ROOT / "live-senate-data.preview.json"
-SNAPSHOT_DIR = ROOT / "discovery_snapshots"
-SNAPSHOT_PREFIX = "kalshi_discovery_"
+OUTPUT_PATH = ROOT / "web" / "live-senate-data.json"
+SNAPSHOT_DIR = ROOT / "live_data_snapshots"
+SNAPSHOT_PREFIX = "live-senate-data_"
 
 CONTROLS_EVENT_TICKER = "CONTROLS-2026"
 
@@ -63,15 +62,11 @@ INITIAL_BACKOFF_SECONDS = 3
 # having a bad day -- worth a non-zero exit so a cron/CI wrapper notices.
 FAILURE_RATE_ALERT_THRESHOLD = 0.25
 
-
-def load_event_tickers() -> list[str]:
-    """Source of truth for what to fetch: every event ticker in
-    scripts/event_ticker_map.json, plus CONTROLS-2026 (handled separately
-    there since it's chamber control, not a state race)."""
-    raw = json.loads(EVENT_MAP_PATH.read_text())
-    tickers = sorted(k for k in raw if not k.startswith("_"))
-    tickers.append(CONTROLS_EVENT_TICKER)
-    return tickers
+# scripts/build_live_data.py isn't a package -- import it directly by path
+# rather than shelling out, now that there's no intermediate file to hand it
+# via CLI.
+sys.path.insert(0, str(ROOT / "scripts"))
+import build_live_data as bld  # noqa: E402
 
 
 def fetch_event_markets(event_ticker: str, max_retries: int = MAX_RETRIES):
@@ -124,7 +119,7 @@ def fetch_event_markets(event_ticker: str, max_retries: int = MAX_RETRIES):
 def fetch_all(event_tickers: list[str]):
     """Returns (discovery, failures) -- discovery is {event_ticker: markets}
     for every ticker (empty list on failure, so the dict's key set always
-    matches event_ticker_map.json's + CONTROLS-2026 -- downstream code
+    matches event_ticker_map.json's + CONTROLS-2026 -- build_live_data.build()
     depends on that shape), failures is {event_ticker: error_description}
     for the ones that came back empty."""
     discovery = {}
@@ -146,27 +141,18 @@ def fetch_all(event_tickers: list[str]):
     return discovery, failures
 
 
-def write_json_atomic(path: Path, payload) -> None:
-    """Write via a temp file + rename so a crash mid-write never leaves
-    `path` -- the file build_live_data.py reads as its input contract --
-    truncated or corrupt."""
-    path.parent.mkdir(parents=True, exist_ok=True)
-    tmp_path = path.with_suffix(path.suffix + f".tmp{os.getpid()}")
-    tmp_path.write_text(json.dumps(payload, indent=2) + "\n")
-    os.replace(tmp_path, path)
-
-
 def write_snapshot_and_promote(snapshot_dir: Path, latest_path: Path, payload, now: datetime) -> Path:
     """Write this run's result to its own uniquely named file under
-    `snapshot_dir` (an immutable audit trail -- every run's raw pull is kept,
+    `snapshot_dir` (an immutable audit trail -- every run's output is kept,
     not just the newest), then atomically point `latest_path` at the same
-    content. Each write is independently atomic (temp + rename), so a crash
-    between the two never corrupts either file -- worst case `latest_path`
-    is one run behind its newest snapshot."""
+    content. Each write is independently atomic (temp + rename, via
+    build_live_data.write_json_atomic), so a crash between the two never
+    corrupts either file -- worst case `latest_path` is one run behind its
+    newest snapshot."""
     ts = now.strftime("%Y%m%dT%H%M%SZ")
     snapshot_path = snapshot_dir / f"{SNAPSHOT_PREFIX}{ts}.json"
-    write_json_atomic(snapshot_path, payload)
-    write_json_atomic(latest_path, payload)
+    bld.write_json_atomic(snapshot_path, payload)
+    bld.write_json_atomic(latest_path, payload)
     return snapshot_path
 
 
@@ -183,23 +169,18 @@ def prune_snapshots(snapshot_dir: Path, keep: int) -> None:
 
 def parse_args():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("--discovery-output", type=Path, default=DISCOVERY_OUTPUT_PATH,
-                         help="stable 'latest' path build_live_data.py reads (default: %(default)s). "
+    parser.add_argument("--output", type=Path, default=OUTPUT_PATH,
+                         help="stable 'latest' path web/app.js fetches (default: %(default)s). "
                               "Each run also writes a timestamped, never-overwritten copy under "
                               "--snapshot-dir and then atomically repoints this path at it.")
     parser.add_argument("--snapshot-dir", type=Path, default=SNAPSHOT_DIR,
-                         help="directory for this run's timestamped raw-dump copy (default: %(default)s)")
+                         help="directory for this run's timestamped output copy (default: %(default)s)")
     parser.add_argument("--keep-snapshots", type=int, default=100,
                          help="prune snapshot dir to the N most recent files after a successful run "
                               "(default: %(default)s; 0 disables pruning)")
     parser.add_argument("--force-promote", action="store_true",
-                         help="repoint --discovery-output at this run's snapshot even if the failure-rate "
-                              "threshold was exceeded (default: leave the previous good 'latest' in place)")
-    parser.add_argument("--preview-output", type=Path, default=PREVIEW_OUTPUT_PATH,
-                         help="where to write the live-senate-data.json-shaped preview "
-                              "(default: %(default)s -- deliberately NOT web/live-senate-data.json)")
-    parser.add_argument("--skip-preview", action="store_true",
-                         help="only fetch + write the raw discovery dump; don't build the preview")
+                         help="repoint --output at this run's snapshot even if the failure-rate threshold "
+                              "was exceeded (default: leave the previous good output in place)")
     parser.add_argument("--dry-run", action="store_true",
                          help="fetch and print, but don't write any files")
     return parser.parse_args()
@@ -208,7 +189,8 @@ def parse_args():
 def main():
     args = parse_args()
 
-    event_tickers = load_event_tickers()
+    event_map = bld.load_event_map()
+    event_tickers = sorted(event_map.keys()) + [CONTROLS_EVENT_TICKER]
     print(f"Fetching {len(event_tickers)} event tickers "
           f"({len(event_tickers) - 1} races + {CONTROLS_EVENT_TICKER})...")
 
@@ -219,6 +201,14 @@ def main():
     if failures:
         print(f"  Failed: {failures}")
 
+    # Previous good output feeds build()'s stale-carryforward logic --
+    # captured before any write this run, whether or not this run ends up
+    # promoted.
+    previous = bld.load_previous_output(args.output)
+    output = bld.build(discovery, event_map, previous)
+    print(f"\nBuilt {len(output['races'])} races "
+          f"({len(output['failedStates'])} failed: {output['failedStates']})")
+
     if args.dry_run:
         print("\n--dry-run: not writing any files.")
         return 1 if failure_rate > FAILURE_RATE_ALERT_THRESHOLD else 0
@@ -227,51 +217,27 @@ def main():
     healthy = failure_rate <= FAILURE_RATE_ALERT_THRESHOLD
 
     if healthy or args.force_promote:
-        snapshot_path = write_snapshot_and_promote(args.snapshot_dir, args.discovery_output, discovery, now)
+        snapshot_path = write_snapshot_and_promote(args.snapshot_dir, args.output, output, now)
         prune_snapshots(args.snapshot_dir, args.keep_snapshots)
         print(f"Wrote {snapshot_path}")
-        print(f"Promoted it to {args.discovery_output}"
+        print(f"Promoted it to {args.output}"
               + ("" if healthy else " (--force-promote overrode the failure-rate threshold)"))
-        build_input = args.discovery_output
     else:
-        # Too many tickers failed to trust this run as the new "latest" --
-        # keep the previous good latest_kalshi_discovery.json in place
-        # (downstream build_live_data.py keeps working off it) but still
-        # record what actually came back, for debugging.
+        # Too many tickers failed to trust this run as the new live data --
+        # keep the previous good web/live-senate-data.json in place but
+        # still record what actually came back, for debugging.
         snapshot_path = args.snapshot_dir / f"{SNAPSHOT_PREFIX}{now.strftime('%Y%m%dT%H%M%SZ')}.json"
-        write_json_atomic(snapshot_path, discovery)
+        bld.write_json_atomic(snapshot_path, output)
         prune_snapshots(args.snapshot_dir, args.keep_snapshots)
         print(f"\n{len(failures)}/{len(event_tickers)} tickers failed "
               f"(> {FAILURE_RATE_ALERT_THRESHOLD:.0%} threshold).")
-        print(f"Wrote {snapshot_path} but did NOT promote it to {args.discovery_output} "
-              f"-- leaving the previous good snapshot in place. Pass --force-promote to override.")
-        build_input = args.discovery_output if args.discovery_output.exists() else snapshot_path
-
-    if not args.skip_preview:
-        # Build the live-senate-data.json-shaped preview via the existing,
-        # unmodified transform script -- kept as a subprocess call (rather
-        # than importing it) so this script has no import-time dependency on
-        # build_live_data.py's internals, and so a bug in one doesn't import
-        # its way into the other's process. --output points at a preview
-        # path, never web/live-senate-data.json, so this never touches the
-        # file the live site serves.
-        result = subprocess.run(
-            [sys.executable, str(BUILD_SCRIPT_PATH),
-             "--input", str(build_input),
-             "--previous", str(ROOT / "web" / "live-senate-data.json"),
-             "--output", str(args.preview_output)],
-            check=False,
-        )
-        if result.returncode != 0:
-            print(f"build_live_data.py exited {result.returncode}", file=sys.stderr)
-            return 1
-        print(f"\nPreview build matches the web/live-senate-data.json shape: {args.preview_output}")
-        print("(web/live-senate-data.json itself was not touched.)")
+        print(f"Wrote {snapshot_path} but did NOT promote it to {args.output} "
+              f"-- leaving the previous good file in place. Pass --force-promote to override.")
 
     # Non-zero exit lets a cron/CI wrapper alert on a systemic failure
     # (auth change, endpoint moved, outage) rather than a few markets having
-    # a bad day -- those are expected to be absorbed downstream via
-    # build_live_data.py's stale-carryforward logic.
+    # a bad day -- those are expected to be absorbed via build()'s
+    # stale-carryforward logic.
     if not healthy:
         return 1
     return 0

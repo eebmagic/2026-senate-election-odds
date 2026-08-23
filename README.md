@@ -6,10 +6,11 @@ A static page showing Kalshi prediction-market odds for the 2026 U.S. Senate rac
 
 ```
 design_handoff_senate_tracker/   design reference (spec + prototype, not shipped code — see its own README)
+script.py                        fetches Kalshi + writes web/live-senate-data.json (see "Rebuild logic")
 scripts/
   event_ticker_map.json          event_ticker -> { state, raceType }, checked-in, changes rarely
-  build_live_data.py             transform: latest_kalshi_discovery.json -> web/live-senate-data.json
-latest_kalshi_discovery.json     raw Kalshi discovery dump the fetch script is expected to keep updated
+  build_live_data.py             the transform script.py calls: raw discovery dict -> live-senate-data.json shape
+live_data_snapshots/             gitignored per-run audit trail written by script.py, newest N kept
 web/                             the published site (static, no build step)
   index.html / app.js / map.js / senate-shared.js
   vendor/                        d3, topojson-client, us-atlas topology (vendored, no CDN)
@@ -32,10 +33,14 @@ Every contested-race segment in the spectrum bar (wide and narrow layouts alike)
 
 ## Rebuild logic
 
-`web/live-senate-data.json` is a generated artifact, not hand-edited. To refresh it:
+`web/live-senate-data.json` is a generated artifact, not hand-edited. To refresh it, run `python3 script.py`. It:
 
-1. Something keeps `latest_kalshi_discovery.json` up to date with a fresh pull from Kalshi (same shape as the historical `kalshi_discovery_*_results.json` dumps: a dict of `event_ticker` → raw market objects). That part isn't owned by this repo's web layer — see `script.py`.
-2. Run `python3 scripts/build_live_data.py`. It reads `latest_kalshi_discovery.json` plus the checked-in `scripts/event_ticker_map.json`, normalizes each race's outcome prices to sum to 1.0, derives `demPrimaryPending`/`repPrimaryPending` per race, and computes each race's `kalshiUrl` (`https://kalshi.com/markets/{series}/{event}`, series being the event ticker with its trailing `-XX` stripped — verified live, the human slug segment isn't required for Kalshi's redirect to resolve). It then writes `web/live-senate-data.json`. If a race's data is missing or unusable, it carries forward that race's last-known-good values from the previous `live-senate-data.json` (flagged `stale`/`staleSince`) rather than ever showing 0% — and lists the state in `failedStates`.
-3. Nothing else needs to change — `web/`'s HTML/CSS/JS never touch the data pipeline. Serve `web/` as a static directory (any static host works; no build step) and each run of step 2 is the only thing that needs to happen to pick up new odds.
+1. Fetches every 2026 Senate race's markets from Kalshi (event tickers read from the checked-in `scripts/event_ticker_map.json`, so the fetch list and the transform step can't drift apart) plus the `CONTROLS-2026` chamber-control market, retrying on rate limits/5xx/network errors.
+2. Transforms the result in-memory via `scripts/build_live_data.build()`: normalizes each race's outcome prices to sum to 1.0, derives `demPrimaryPending`/`repPrimaryPending` per race, and computes each race's `kalshiUrl` (`https://kalshi.com/markets/{series}/{event}`, series being the event ticker with its trailing `-XX` stripped — verified live, the human slug segment isn't required for Kalshi's redirect to resolve). If a race's data is missing or unusable, it carries forward that race's last-known-good values from the previous `live-senate-data.json` (flagged `stale`/`staleSince`) rather than ever showing 0% — and lists the state in `failedStates`.
+3. Writes a timestamped copy to `live_data_snapshots/` (an audit trail, pruned to the newest 100 by default), then atomically repoints `web/live-senate-data.json` at it — unless more than 25% of tickers failed this run, in which case the snapshot is written but `web/live-senate-data.json` is left on the previous good run (`--force-promote` overrides).
+
+`scripts/build_live_data.py` also runs standalone (`python3 scripts/build_live_data.py --input <dump> --output <out>`) if you ever need to rebuild from a manually saved raw discovery dump.
+
+Nothing else needs to change — `web/`'s HTML/CSS/JS never touch the data pipeline. Serve `web/` as a static directory (any static host works; no build step) and each run of `script.py` is the only thing that needs to happen to pick up new odds.
 
 Run it locally with e.g. `python3 -m http.server` from inside `web/`.
