@@ -47,10 +47,16 @@ function wireTooltip(containerEl, tooltipEl, { anchorToRow = false } = {}) {
   // Touch only: the element armed to navigate on its *next* tap, since the
   // first tap on a link just shows the preview instead.
   let armedEl = null;
+  // The element whose hover/tap most recently opened the tooltip. Used only
+  // by the scrollable-list variant (see below) to tell "cursor left for good"
+  // apart from "cursor moved off the trigger and onto the tooltip itself".
+  let activeTriggerEl = null;
 
   function show(payload, event, el) {
     active = true;
+    activeTriggerEl = el || null;
     tooltipEl.innerHTML = tooltipHtml(payload);
+    tooltipEl.classList.toggle('scrollable', !!payload.scrollable);
     tooltipEl.style.display = 'block';
     if (anchorToRow && el) {
       positionAboveOrBelowRow(el);
@@ -61,6 +67,14 @@ function wireTooltip(containerEl, tooltipEl, { anchorToRow = false } = {}) {
   }
   function move(event) {
     if (!active || anchorToRow) return;
+    // Scrollable-list variant: position it once, at the cursor location that
+    // opened it (the initial mouseenter/click that reached show() below),
+    // then leave it be. If it kept re-centering on every mousemove like the
+    // small tooltips do, the box would visually chase the cursor as the user
+    // moves toward it to scroll -- since it's anchored bottom-center on the
+    // cursor, the cursor would always land right on its bottom edge, a
+    // flicker-prone hit-test boundary rather than a stable target.
+    if (event.type === 'mousemove' && tooltipEl.classList.contains('scrollable')) return;
     const rect = containerEl.getBoundingClientRect();
     tooltipEl.style.left = (event.clientX - rect.left) + 'px';
     tooltipEl.style.top = (event.clientY - rect.top) + 'px';
@@ -117,6 +131,7 @@ function wireTooltip(containerEl, tooltipEl, { anchorToRow = false } = {}) {
   function hide() {
     active = false;
     armedEl = null;
+    activeTriggerEl = null;
     tooltipEl.style.display = 'none';
     tooltipEl.classList.remove('below');
   }
@@ -132,6 +147,18 @@ function wireTooltip(containerEl, tooltipEl, { anchorToRow = false } = {}) {
     });
   }
 
+  // Scrollable-list variant only (see .tooltip.scrollable in index.html):
+  // this tooltip has pointer-events enabled so it can actually receive
+  // wheel/touch scroll input, which means the cursor moving from the
+  // trigger block onto the tooltip itself now fires the trigger's
+  // mouseleave. Only really hide once the cursor leaves the tooltip for
+  // somewhere that isn't back on its own trigger.
+  tooltipEl.addEventListener('mouseleave', e => {
+    if (!active || !tooltipEl.classList.contains('scrollable')) return;
+    if (activeTriggerEl && e.relatedTarget === activeTriggerEl) return;
+    hide();
+  });
+
   // Tooltip-only element (the solid D/R blocks: no single race backs them,
   // so nothing to link to).
   function bindHover(el, payload) {
@@ -139,7 +166,12 @@ function wireTooltip(containerEl, tooltipEl, { anchorToRow = false } = {}) {
       el.addEventListener('click', e => { e.preventDefault(); show(payload, e, el); });
     } else {
       el.addEventListener('mouseenter', e => show(payload, e, el));
-      el.addEventListener('mouseleave', hide);
+      el.addEventListener('mouseleave', e => {
+        // Scrollable-list variant: don't hide when the cursor is just
+        // moving off the trigger and onto the (now interactive) tooltip.
+        if (payload.scrollable && e.relatedTarget && tooltipEl.contains(e.relatedTarget)) return;
+        hide();
+      });
     }
   }
 
@@ -217,8 +249,11 @@ function computeVals(data) {
   const seatsIntoContested = 50 - demSolidCount;
   const majorityLinePos = demBlockPct + (seatsIntoContested / contested.length) * contestedPct;
 
-  const demBlockTooltip = { title: demSolidCount + ' Democratic seats not up in 2026', rows: dSolids.map(s => ({ label: s.state, value: s.senator })) };
-  const repBlockTooltip = { title: repSolidCount + ' Republican seats not up in 2026', rows: rSolids.map(s => ({ label: s.state, value: s.senator })) };
+  // scrollable: true marks the long-list tooltip variant (see .tooltip.scrollable
+  // in index.html + wireTooltip in this file) so the full 30+ name list is
+  // actually reachable by scroll, not just visually truncated.
+  const demBlockTooltip = { title: demSolidCount + ' Democratic seats not up in 2026', rows: dSolids.map(s => ({ label: s.state, value: s.senator })), scrollable: true };
+  const repBlockTooltip = { title: repSolidCount + ' Republican seats not up in 2026', rows: rSolids.map(s => ({ label: s.state, value: s.senator })), scrollable: true };
 
   const cm = data.controlsMarket || { demProbability: 0.5, repProbability: 0.5 };
   const demPct = Math.round(cm.demProbability * 1000) / 10;
