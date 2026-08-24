@@ -26,6 +26,7 @@ The Nebraska tooltip lists "Cindy Burbank D 0%" alongside "Pete Ricketts R 70%" 
 
 **Decision:** Accept
 **Implemented:** clarity/candidate-zero-percent — fixed at the shared `fmtPct()` formatter in `web/senate-shared.js` (used by both `app.js` and `map.js`), so it applies consistently to every percentage display (seat-bar tooltip, map tooltip, etc.): any probability that rounds to 0% but is greater than 0 now renders as "<1%" instead of "0%" (and, for symmetry, a probability that rounds to 100% but is less than 1 renders as ">99%"). Verified live: hovering NE in the "All 100 seats" bar chart now shows "Cindy Burbank D <1%" instead of "D 0%".
+**Merge status:** Merged into main (PR #12)
 
 ## "Seats" vs. "races" used inconsistently
 **Severity:** minor

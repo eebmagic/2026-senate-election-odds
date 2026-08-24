@@ -32,6 +32,8 @@ The dark tooltip that appears on hovering a seat cell (e.g., "FL — special ele
 
 Revised approach: rather than a halo on the source cell, the tooltip itself now anchors to the row (`positionAboveOrBelowRow()` in `web/app.js`'s `wireTooltip()`, via `anchorToRow: true` — already used by the narrow layout, now also applied to the wide bar) instead of following the cursor. This gives it a stable height above the bar regardless of which cell triggered it, and a small CSS triangle "tail" (`#tooltip-wide::after`/`#tooltip-narrow::after` in `web/index.html`, aimed via a `--tail-x` custom property set in `pointTailAt()`) points down (or up, when flipped below) at the exact cell that opened it — correctly re-aimed even when the tooltip itself gets nudged sideways to stay on-screen (e.g. RI at the left edge). The scrollable "N seats not up" list tooltip gets no tail (no single cell to point at). The map's tooltip (`#map-tooltip`) is untouched — still cursor-following, out of scope. Verified live on VA (wide, middle), RI (wide, edge-clamped), the solid block (wide), and VA (narrow/mobile stacked layout).
 
+**Merge status:** Merged into main (PR #14)
+
 ## Map tooltip and seat-bar tooltip differ in richness, inconsistently
 **Severity:** minor
 **Source:** interaction & usability review
