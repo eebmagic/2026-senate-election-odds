@@ -118,13 +118,26 @@
 
   /* Tooltip (shared by spectrum + map) */
   .tooltip { position: absolute; pointer-events: none; background: #211f1c; color: #faf8f4; padding: 10px 13px; border-radius: 4px; font-size: 12.5px; line-height: 1.5; min-width: 150px; max-height: 260px; overflow-y: auto; overflow-x: hidden; box-shadow: 0 8px 20px rgba(0,0,0,0.28); z-index: 5; transform: translate(-50%, -100%); display: none; }
-  /* Long-list variant (the "N seats not up" tooltips): unlike the small
-     cursor-following tooltips, this one needs to actually receive wheel/touch
-     scroll input once open, so it can't stay pointer-events:none. It's still
-     positioned like the others, but the mouseleave handling in app.js's
-     wireTooltip() keeps it open while the cursor moves from the trigger
-     block into the tooltip itself. */
-  .tooltip.scrollable { pointer-events: auto; scrollbar-gutter: stable; }
+  /* The seat-bar tooltips (wide + narrow) are row-anchored a few pixels off
+     their trigger rather than pinned under the cursor (see
+     positionAboveOrBelowRow() in app.js), so the cursor has to actually
+     cross onto the tooltip box to keep it open -- unlike the map tooltip,
+     which stays cursor-adjacent and pointer-events:none per the base rule
+     above. Both need to actually receive the hover (and, for the scrollable
+     long-list variant, wheel/touch scroll input), so they can't stay
+     pointer-events:none; the mouseenter/mouseleave handling in app.js's
+     wireTooltip() keeps the tooltip open while the cursor is on it and
+     hides it (after a short grace period) once the cursor leaves for good. */
+  #tooltip-wide, #tooltip-narrow { pointer-events: auto; }
+  .tooltip.scrollable { scrollbar-gutter: stable; }
+  /* Keep the scrollbar itself visible as a hint that the list scrolls,
+     rather than relying on the OS's default overlay-scrollbar behavior
+     (which on most platforms only draws it during an active scroll/hover). */
+  .tooltip.scrollable { scrollbar-width: thin; scrollbar-color: rgba(250,248,244,0.35) transparent; }
+  .tooltip.scrollable::-webkit-scrollbar { width: 8px; }
+  .tooltip.scrollable::-webkit-scrollbar-track { background: transparent; }
+  .tooltip.scrollable::-webkit-scrollbar-thumb { background: rgba(250,248,244,0.35); border-radius: 4px; }
+  .tooltip.scrollable::-webkit-scrollbar-thumb:hover { background: rgba(250,248,244,0.5); }
   /* Row-anchored tooltips (both the wide and narrow seat-bar layouts): top/left
      mark the row's top-center by default, so the tooltip sits above it
      (translate -100% on Y) at a stable height regardless of which cell in
@@ -153,7 +166,15 @@
   .tooltip .group-label:first-of-type { margin-top: 2px; }
   .tooltip .row { display: flex; justify-content: space-between; gap: 14px; font-variant-numeric: tabular-nums; white-space: nowrap; }
   .tooltip .row .value { color: #cfcac0; }
-  .tooltip .hint { margin-top: 6px; padding-top: 6px; border-top: 1px solid rgba(250,248,244,0.25); font-size: 11px; color: #9a958c; white-space: nowrap; }
+  /* Now a real <a> (see tooltipHtml() in app.js) -- block + explicit color
+     override the global `a`/`a:hover` rules (blue, meant for the page body)
+     so it keeps reading as muted tooltip text. The whole line is clickable,
+     but only the "Kalshi ↗" span (see .hint-link below) is underlined, so
+     the underline reads as pointing at the destination rather than
+     decorating the whole instruction sentence. */
+  .tooltip .hint { display: block; margin-top: 6px; padding-top: 6px; border-top: 1px solid rgba(250,248,244,0.25); font-size: 11px; color: #9a958c; white-space: nowrap; }
+  .tooltip .hint .hint-link { text-decoration: underline; }
+  .tooltip .hint:hover { color: #cfcac0; }
 
   /* Map */
   .map-section-caption { margin-bottom: 14px; }

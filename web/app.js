@@ -25,6 +25,15 @@ const CONTESTED_UNITS = 130;
 // bindLink below). Detected once, not per element.
 const isTouchDevice = window.matchMedia('(hover: none), (pointer: coarse)').matches;
 
+// Grace period before a mouseleave-triggered hide actually takes effect.
+// Row-anchored tooltips sit a few pixels off their trigger (see the `gap` in
+// positionAboveOrBelowRow below), and a mouse moving slowly toward the
+// tooltip can land in that gap for a moment -- on neither the trigger nor
+// the tooltip -- which would otherwise fire an instant mouseleave and
+// dismiss the tooltip before the cursor ever reaches it. Deferring the hide
+// gives that crossing time to land back on one of them and cancel it.
+const HIDE_DELAY_MS = 150;
+
 function escapeHtml(s) {
   return String(s)
     .replace(/&/g, '&amp;')
@@ -37,8 +46,12 @@ function tooltipHtml(payload) {
   const rows = payload.rows.map(r =>
     `<div class="row"><span>${escapeHtml(r.label)}</span><span class="value">${escapeHtml(r.value)}</span></div>`
   ).join('');
+  // A real <a>, not just styled text -- now that the tooltip itself receives
+  // pointer events (see #tooltip-wide/#tooltip-narrow in index.html), this
+  // is reachable and clickable on its own, not just via the segment
+  // underneath it.
   const hint = payload.href
-    ? `<div class="hint">${isTouchDevice ? 'Tap again to view on Kalshi ↗' : 'Click to view on Kalshi ↗'}</div>`
+    ? `<a class="hint" href="${escapeHtml(payload.href)}" target="_blank" rel="noopener noreferrer">${isTouchDevice ? 'Tap again to view on ' : 'Click to view on '}<span class="hint-link">Kalshi ↗</span></a>`
     : '';
   return `<div class="title">${escapeHtml(payload.title)}</div>${rows}${hint}`;
 }
@@ -52,8 +65,23 @@ function wireTooltip(containerEl, tooltipEl, { anchorToRow = false } = {}) {
   // by the scrollable-list variant (see below) to tell "cursor left for good"
   // apart from "cursor moved off the trigger and onto the tooltip itself".
   let activeTriggerEl = null;
+  // Pending hide from a mouseleave grace period (see HIDE_DELAY_MS above);
+  // cancelled if the cursor lands back on the trigger or the tooltip first.
+  let hideTimer = null;
+
+  function cancelHide() {
+    if (hideTimer !== null) {
+      clearTimeout(hideTimer);
+      hideTimer = null;
+    }
+  }
+  function scheduleHide() {
+    cancelHide();
+    hideTimer = setTimeout(hide, HIDE_DELAY_MS);
+  }
 
   function show(payload, event, el) {
+    cancelHide();
     active = true;
     activeTriggerEl = el || null;
     tooltipEl.innerHTML = tooltipHtml(payload);
@@ -147,6 +175,7 @@ function wireTooltip(containerEl, tooltipEl, { anchorToRow = false } = {}) {
     }
   }
   function hide() {
+    cancelHide();
     active = false;
     armedEl = null;
     activeTriggerEl = null;
@@ -165,16 +194,17 @@ function wireTooltip(containerEl, tooltipEl, { anchorToRow = false } = {}) {
     });
   }
 
-  // Scrollable-list variant only (see .tooltip.scrollable in index.html):
-  // this tooltip has pointer-events enabled so it can actually receive
-  // wheel/touch scroll input, which means the cursor moving from the
-  // trigger block onto the tooltip itself now fires the trigger's
-  // mouseleave. Only really hide once the cursor leaves the tooltip for
-  // somewhere that isn't back on its own trigger.
+  // Row-anchored tooltips have pointer-events enabled (see #tooltip-wide /
+  // #tooltip-narrow in index.html) precisely so the cursor can move off the
+  // trigger and onto the tooltip itself -- e.g. to scroll the "N seats not
+  // up" long-list variant -- without it disappearing. Only really hide once
+  // the cursor leaves the tooltip for somewhere that isn't back on its own
+  // trigger.
+  tooltipEl.addEventListener('mouseenter', () => cancelHide());
   tooltipEl.addEventListener('mouseleave', e => {
-    if (!active || !tooltipEl.classList.contains('scrollable')) return;
+    if (!active) return;
     if (activeTriggerEl && e.relatedTarget === activeTriggerEl) return;
-    hide();
+    scheduleHide();
   });
 
   // Tooltip-only element (the solid D/R blocks: no single race backs them,
@@ -185,10 +215,12 @@ function wireTooltip(containerEl, tooltipEl, { anchorToRow = false } = {}) {
     } else {
       el.addEventListener('mouseenter', e => show(payload, e, el));
       el.addEventListener('mouseleave', e => {
-        // Scrollable-list variant: don't hide when the cursor is just
-        // moving off the trigger and onto the (now interactive) tooltip.
-        if (payload.scrollable && e.relatedTarget && tooltipEl.contains(e.relatedTarget)) return;
-        hide();
+        // Don't hide when the cursor is just moving off the trigger and
+        // onto the (now interactive) tooltip -- tooltipEl's own mouseenter
+        // above will cancel the hide anyway, but skipping the timer here
+        // avoids the pointless schedule/cancel churn on that direct path.
+        if (e.relatedTarget && tooltipEl.contains(e.relatedTarget)) return;
+        scheduleHide();
       });
     }
   }
@@ -208,7 +240,10 @@ function wireTooltip(containerEl, tooltipEl, { anchorToRow = false } = {}) {
       });
     } else {
       el.addEventListener('mouseenter', e => show(payload, e, el));
-      el.addEventListener('mouseleave', hide);
+      el.addEventListener('mouseleave', e => {
+        if (e.relatedTarget && tooltipEl.contains(e.relatedTarget)) return;
+        scheduleHide();
+      });
     }
   }
 
