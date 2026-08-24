@@ -135,6 +135,19 @@ export function isMaterialIndependent(race) {
   return !!(race.otherTickers && race.otherTickers.some(t => t.probability > 0.10));
 }
 
+// For sort ordering: the strongest non-Republican performer in the race --
+// the Democratic candidate, or a better-polling independent/other, e.g.
+// Nebraska's Dan Osborn (I), who outpolls the Democratic nominee there.
+// Sorting the seat bar purely on demProbability buries a race like that near
+// the solid-R end even though it's genuinely contested; this instead
+// reflects how competitive the race actually is against the Republican.
+export function maxNonRepProbability(race) {
+  const others = (race.otherTickers || [])
+    .filter(t => t.affiliation !== 'republican')
+    .map(t => t.probability);
+  return Math.max(race.demProbability, ...others);
+}
+
 function hexLerp(a, b, t) {
   const pa = [1, 3, 5].map(i => parseInt(a.slice(i, i + 2), 16));
   const pb = [1, 3, 5].map(i => parseInt(b.slice(i, i + 2), 16));

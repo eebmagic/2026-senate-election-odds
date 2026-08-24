@@ -14,7 +14,8 @@ import {
   fmtPct,
   seatPartyResolved,
   isMaterialIndependent,
-  raceHasPendingPrimary
+  raceHasPendingPrimary,
+  maxNonRepProbability
 } from './senate-shared.js';
 import { renderMap } from './map.js';
 
@@ -269,7 +270,7 @@ function makeContestedSeg(r) {
     state: r.state,
     race: r,
     href: r.kalshiUrl,
-    color: colorForDemProb(r.demProbability),
+    color: colorForDemProb(maxNonRepProbability(r)),
     leadLabel: Math.round(Math.max(r.demProbability, r.repProbability) * 100),
     leadParty: leadDem ? 'D' : 'R',
     showIndependentMark: isMaterialIndependent(r),
@@ -289,7 +290,7 @@ function computeVals(data) {
   const races = data.races || [];
   const dSolids = SOLID_SEATS.filter(s => seatPartyResolved(s) === 'D').sort((a, b) => a.state.localeCompare(b.state));
   const rSolids = SOLID_SEATS.filter(s => seatPartyResolved(s) === 'R').sort((a, b) => a.state.localeCompare(b.state));
-  const contested = [...races].sort((a, b) => b.demProbability - a.demProbability);
+  const contested = [...races].sort((a, b) => maxNonRepProbability(b) - maxNonRepProbability(a));
   const segments = contested.map(makeContestedSeg);
 
   const demSolidCount = dSolids.length;
