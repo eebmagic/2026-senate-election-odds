@@ -1,16 +1,19 @@
 #!/usr/bin/env python3
 """
-Transform the raw Kalshi discovery dump into the UI-ready live-senate-data.json
-artifact that web/app.js fetches at runtime.
+Transform a raw Kalshi discovery dump ({event_ticker: [raw market objects]})
+into the UI-ready live-senate-data.json shape ({ fetchedAt, controlsMarket,
+races, failedStates }, per design_handoff_senate_tracker/README.md).
 
-Input:  latest_kalshi_discovery.json (repo root) -- dict of event_ticker -> list
-        of raw Kalshi market objects, in the same shape the discovery/fetch
-        script has always produced.
-Output: web/live-senate-data.json -- { fetchedAt, controlsMarket, races, failedStates }
-        per design_handoff_senate_tracker/README.md.
+Normally used as a library: script.py imports build() and load_event_map()
+directly and calls them in-memory against a fresh Kalshi pull, writing
+straight to web/live-senate-data.json -- there's no on-disk raw-dump file in
+that path.
 
-Usage: python3 scripts/build_live_data.py
-       python3 scripts/build_live_data.py --output path/to/preview.json
+This file also runs standalone via its own CLI, for manually rebuilding from
+a raw dump saved to disk (e.g. while debugging a specific run's data):
+
+Usage: python3 scripts/build_live_data.py --input path/to/dump.json
+       python3 scripts/build_live_data.py --input path/to/dump.json --output path/to/out.json
 """
 import argparse
 import json
@@ -190,7 +193,7 @@ def build_controls_market(discovery, previous):
 
 
 def parse_args():
-    parser = argparse.ArgumentParser(description=__doc__)
+    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--input", type=Path, default=INPUT_PATH,
                          help="raw Kalshi discovery dump (default: %(default)s)")
     parser.add_argument("--previous", type=Path, default=None,
@@ -210,6 +213,8 @@ def build(discovery, event_map, previous):
 
     now_iso = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
+    previous_fetched_at = previous.get("fetchedAt") if previous else None
+
     races = []
     failed_states = []
     for event_ticker, info in sorted(event_map.items()):
@@ -219,7 +224,7 @@ def build(discovery, event_map, previous):
 
         race = build_race(state, race_type, event_ticker, markets) if markets else None
         if race is None:
-            fallback = stale_race(state, previous_races_by_state, previous.get("fetchedAt") if previous else None, event_ticker)
+            fallback = stale_race(state, previous_races_by_state, previous_fetched_at, event_ticker)
             failed_states.append(state)
             if fallback is not None:
                 races.append(fallback)
