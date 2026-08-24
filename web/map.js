@@ -62,7 +62,7 @@ function tooltipHtml(summary, name) {
     // only states with a 2026 race actually link out to Kalshi (see
     // renderMap below), so only those get the call-to-action line.
     if (r.kalshiUrl) {
-      html += '<div class="hint">Click to view on Kalshi &#8599;</div>';
+      html += '<div class="hint">Click to view on <span class="hint-link">Kalshi &#8599;</span></div>';
     }
   }
   return html;
