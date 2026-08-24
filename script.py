@@ -33,7 +33,6 @@ Usage:
 """
 import argparse
 import json
-import os
 import random
 import sys
 import time
@@ -69,11 +68,18 @@ sys.path.insert(0, str(ROOT / "scripts"))
 import build_live_data as bld  # noqa: E402
 
 
+def _wait_before_retry(delay: float) -> float:
+    """Sleep `delay` seconds plus jitter (so many tickers hitting a rate
+    limit at once don't all retry in lockstep), and return the doubled delay
+    for the next attempt."""
+    time.sleep(delay + random.uniform(0, delay * 0.25))
+    return delay * 2
+
+
 def fetch_event_markets(event_ticker: str, max_retries: int = MAX_RETRIES):
-    """Fetch one event's markets. Retries with exponential backoff (plus
-    jitter, so many tickers hitting a rate limit at once don't all retry in
-    lockstep) on 429s, 5xx, and transient network errors. Gives up
-    immediately on other 4xx -- those won't resolve by retrying.
+    """Fetch one event's markets. Retries with exponential backoff on 429s,
+    5xx, and transient network errors. Gives up immediately on other 4xx --
+    those won't resolve by retrying.
 
     Returns (markets, error) -- error is None on success, else a short
     description of what went wrong (markets is [] in that case).
@@ -91,8 +97,7 @@ def fetch_event_markets(event_ticker: str, max_retries: int = MAX_RETRIES):
             if (e.code == 429 or e.code >= 500) and attempt < max_retries - 1:
                 print(f"    HTTP {e.code} -- backing off ~{delay:.1f}s "
                       f"(attempt {attempt + 1}/{max_retries})")
-                time.sleep(delay + random.uniform(0, delay * 0.25))
-                delay *= 2
+                delay = _wait_before_retry(delay)
                 last_error = f"HTTP {e.code}"
                 continue
             print(f"    HTTP {e.code} for {event_ticker}")
@@ -102,8 +107,7 @@ def fetch_event_markets(event_ticker: str, max_retries: int = MAX_RETRIES):
             if attempt < max_retries - 1:
                 print(f"    Network error ({reason}) -- backing off ~{delay:.1f}s "
                       f"(attempt {attempt + 1}/{max_retries})")
-                time.sleep(delay + random.uniform(0, delay * 0.25))
-                delay *= 2
+                delay = _wait_before_retry(delay)
                 last_error = f"network error: {reason}"
                 continue
             print(f"    Network error for {event_ticker}: {reason}")
@@ -141,19 +145,10 @@ def fetch_all(event_tickers: list[str]):
     return discovery, failures
 
 
-def write_snapshot_and_promote(snapshot_dir: Path, latest_path: Path, payload, now: datetime) -> Path:
-    """Write this run's result to its own uniquely named file under
-    `snapshot_dir` (an immutable audit trail -- every run's output is kept,
-    not just the newest), then atomically point `latest_path` at the same
-    content. Each write is independently atomic (temp + rename, via
-    build_live_data.write_json_atomic), so a crash between the two never
-    corrupts either file -- worst case `latest_path` is one run behind its
-    newest snapshot."""
-    ts = now.strftime("%Y%m%dT%H%M%SZ")
-    snapshot_path = snapshot_dir / f"{SNAPSHOT_PREFIX}{ts}.json"
-    bld.write_json_atomic(snapshot_path, payload)
-    bld.write_json_atomic(latest_path, payload)
-    return snapshot_path
+def snapshot_path_for(snapshot_dir: Path, now: datetime) -> Path:
+    """This run's uniquely named path under `snapshot_dir` (an immutable
+    audit trail -- every run's output is kept, not just the newest)."""
+    return snapshot_dir / f"{SNAPSHOT_PREFIX}{now.strftime('%Y%m%dT%H%M%SZ')}.json"
 
 
 def prune_snapshots(snapshot_dir: Path, keep: int) -> None:
@@ -216,23 +211,25 @@ def main():
     now = datetime.now(timezone.utc)
     healthy = failure_rate <= FAILURE_RATE_ALERT_THRESHOLD
 
+    # Every run's output is kept as a snapshot regardless of health; only a
+    # healthy run (or an explicit override) also gets promoted to the stable
+    # `--output` path web/app.js actually reads.
+    snapshot_path = snapshot_path_for(args.snapshot_dir, now)
+    bld.write_json_atomic(snapshot_path, output)
+    print(f"Wrote {snapshot_path}")
+
     if healthy or args.force_promote:
-        snapshot_path = write_snapshot_and_promote(args.snapshot_dir, args.output, output, now)
-        prune_snapshots(args.snapshot_dir, args.keep_snapshots)
-        print(f"Wrote {snapshot_path}")
+        bld.write_json_atomic(args.output, output)
         print(f"Promoted it to {args.output}"
               + ("" if healthy else " (--force-promote overrode the failure-rate threshold)"))
     else:
         # Too many tickers failed to trust this run as the new live data --
-        # keep the previous good web/live-senate-data.json in place but
-        # still record what actually came back, for debugging.
-        snapshot_path = args.snapshot_dir / f"{SNAPSHOT_PREFIX}{now.strftime('%Y%m%dT%H%M%SZ')}.json"
-        bld.write_json_atomic(snapshot_path, output)
-        prune_snapshots(args.snapshot_dir, args.keep_snapshots)
+        # keep the previous good web/live-senate-data.json in place.
         print(f"\n{len(failures)}/{len(event_tickers)} tickers failed "
-              f"(> {FAILURE_RATE_ALERT_THRESHOLD:.0%} threshold).")
-        print(f"Wrote {snapshot_path} but did NOT promote it to {args.output} "
+              f"(> {FAILURE_RATE_ALERT_THRESHOLD:.0%} threshold). Did NOT promote to {args.output} "
               f"-- leaving the previous good file in place. Pass --force-promote to override.")
+
+    prune_snapshots(args.snapshot_dir, args.keep_snapshots)
 
     # Non-zero exit lets a cron/CI wrapper alert on a systemic failure
     # (auth change, endpoint moved, outage) rather than a few markets having
