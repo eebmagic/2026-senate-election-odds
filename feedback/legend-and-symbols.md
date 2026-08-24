@@ -50,6 +50,7 @@ The small white sliver marking "primary not yet decided" appears as a 2-3px tall
 
 **Decision:** Accept
 **Implemented:** symbols/primary-pending-marker — replaced the page-colored 5px sliver (`.pending-mark-h`/`.pending-mark-v`, which matched the body background exactly) with a small bordered "?" badge, sized/styled consistently with the ★ special-election marker. Updated the legend's "Primary not yet decided" swatch to match. Verified live: RI, DE, MA, NH, AK, SC, and OK all show a clearly visible white "?" badge with a dark border at the bottom of their seat-bar cells.
+**Merge status:** Merged into main (PR #13)
 
 ## State map has no adjacent legend
 **Severity:** moderate
