@@ -100,6 +100,44 @@ blindly, and never discard/revert a hunk you don't recognize.
 **Never commit** `note.md` / `.note.md.swp` — the user's personal scratch
 notes, explicitly marked not to be tracked.
 
+## Backend: the Kalshi data pipeline (`script.py`)
+
+Full architecture is in `README.md`'s "Rebuild logic" — this is the
+practical stuff hit while working on it.
+
+- `script.py` fetches from Kalshi and writes `web/live-senate-data.json`
+  directly (in-memory transform via `scripts/build_live_data.build()`) —
+  there's no intermediate raw-dump file. `scripts/build_live_data.py` still
+  runs standalone (`--input`/`--previous`/`--output`) for rebuilding from a
+  manually saved dump.
+- `live_data_snapshots/` is a **tracked** (not gitignored) per-run audit
+  trail, pruned on disk to the newest N each run (`--keep-snapshots`,
+  default 100). A commit that includes it needs to stage deletions too —
+  `git add -A web/live-senate-data.json live_data_snapshots/`, not just the
+  single live-data file, or pruned files linger tracked in git.
+- If more than 25% of tickers fail a run, `script.py` deliberately leaves
+  `web/live-senate-data.json` on the previous good run instead of
+  overwriting it with mostly-stale data (the snapshot is still written, for
+  debugging). Read "the live file didn't change" as that gate tripping, not
+  the script being broken — check the run's own failure-rate output first.
+- Before running `script.py` against the real repo paths, check `git
+  status`/`but status` for uncommitted changes to `web/live-senate-data.json`
+  — other agents' in-progress UI work can be mid-edit on that exact file.
+  Validate first with `--output`/`--snapshot-dir` pointed at a scratch path
+  (real network calls, no risk to the tracked file), then only point at the
+  real defaults once the working tree is confirmed clear there.
+- Kalshi quirk baked into `scripts/event_ticker_map.json`: the
+  `SENATELA-26` event ticker actually carries **Kentucky's** markets (a
+  labeling bug on Kalshi's side); real Louisiana is `KXSENATELA-26NOV`.
+  Don't "fix" this if it looks wrong — it's deliberate and confirmed live.
+- Independent-candidate ticker suffixes aren't a fixed convention (seen so
+  far: `TACH`, `IND`, `DOSB`, `BBEN` across different races) — don't
+  hardcode them; `build_race()`'s "anything that isn't `-D`/`-R` is an
+  other-ticker" fallback is the correct approach.
+- Both scripts are stdlib-only (no `requirements.txt`, no venv) — keep it
+  that way unless there's a real reason not to; it's what makes this easy to
+  drop into a cron job or GitHub Actions runner later.
+
 ## Shared code to know about
 
 - `web/senate-shared.js` — the single source of truth for colors
