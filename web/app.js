@@ -344,6 +344,7 @@ function computeVals(data) {
   const repBlockTooltip = { title: repSolidCount + ' Republican seats not up in 2026', rows: rSolids.map(s => ({ label: s.state, value: s.senator })), scrollable: true };
 
   const cm = data.controlsMarket || { demProbability: 0.5, repProbability: 0.5 };
+  const controlsHref = cm.kalshiUrl || '';
   const demPct = Math.round(cm.demProbability * 1000) / 10;
   const repPct = Math.round(cm.repProbability * 1000) / 10;
 
@@ -362,6 +363,7 @@ function computeVals(data) {
     demPct, repPct,
     demPctLabel: 'Democratic ' + fmtPct(cm.demProbability),
     repPctLabel: 'Republican ' + fmtPct(cm.repProbability),
+    controlsHref,
     fetchedAtLabel,
     failedStates: data.failedStates || []
   };
@@ -398,6 +400,16 @@ function renderGauge(vals) {
   repEl.style.width = vals.repPct + '%';
   demEl.textContent = vals.demPctLabel;
   repEl.textContent = vals.repPctLabel;
+
+  // Leave the href unset when the data has no URL for the chamber-control
+  // market -- .gauge-source only shows itself once [href] is present, so a
+  // missing URL hides the link instead of rendering a dead one.
+  const srcEl = document.getElementById('gauge-source-link');
+  if (vals.controlsHref) {
+    srcEl.href = vals.controlsHref;
+  } else {
+    srcEl.removeAttribute('href');
+  }
 }
 
 function renderWideBar(vals) {
