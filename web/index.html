@@ -32,6 +32,12 @@
   .gauge-seg.rep { background: #b3372c; justify-content: flex-end; padding-right: 18px; }
   .gauge-divider { position: absolute; left: 50%; top: -8px; bottom: -8px; width: 2px; background: #211f1c; transform: translateX(-1px); pointer-events: none; }
   .gauge-caption { font-size: 12px; color: #5b574f; margin-top: 8px; }
+  /* Href comes from controlsMarket.kalshiUrl at render time (renderGauge in
+     app.js), so it tracks the event ticker in the data rather than being
+     hardcoded here; hidden until that href is set. */
+  .gauge-header { display: flex; align-items: baseline; gap: 10px; }
+  .gauge-source { display: none; font-size: 12px; }
+  .gauge-source[href] { display: inline-block; }
 
   /* Seat spectrum */
   .spectrum-section { margin-bottom: 52px; }
@@ -225,7 +231,10 @@
   <div id="app">
 
     <div class="gauge-section">
-      <div class="section-heading">Chamber control</div>
+      <div class="gauge-header">
+        <div class="section-heading">Chamber control</div>
+        <a class="gauge-source" id="gauge-source-link" target="_blank" rel="noopener noreferrer">Kalshi &#8599;</a>
+      </div>
       <div class="gauge-wrap" id="gauge-wrap">
         <div class="gauge-bar">
           <div class="gauge-seg dem" id="gauge-dem"></div>
@@ -233,7 +242,7 @@
         </div>
         <div class="gauge-divider"></div>
       </div>
-      <div class="gauge-caption">Market-implied probability of majority control after the 2026 elections, from Kalshi's CONTROLS-2026 event.</div>
+      <div class="gauge-caption">Market-implied probability of majority control after the 2026 midterms. Includes the VP as tiebreaker.</div>
     </div>
 
     <div class="spectrum-section">
