@@ -53,9 +53,22 @@ function escapeHtml(s) {
     .replace(/"/g, '&quot;');
 }
 
+// Race rows carry `party`/`pct` instead of a single `value` string, so the
+// party letter and percentage can be laid out as separate grid cells (see
+// .tooltip .rows in index.html) -- keeps the D/R/I letters flush to a
+// consistent distance from the edge and the percentages right-aligned above
+// one another, regardless of how many digits a given percentage has (e.g.
+// "R 1%" vs "D 99%" no longer stagger the letters).
+function rowValueHtml(r) {
+  if (r.party !== undefined) {
+    return `<span class="value split"><span class="party">${escapeHtml(r.party)}</span><span class="pct">${escapeHtml(r.pct)}</span></span>`;
+  }
+  return `<span class="value">${escapeHtml(r.value)}</span>`;
+}
+
 function tooltipHtml(payload) {
   const rows = payload.rows.map(r =>
-    `<div class="row"><span>${escapeHtml(r.label)}</span><span class="value">${escapeHtml(r.value)}</span></div>`
+    `<div class="row"><span>${escapeHtml(r.label)}</span>${rowValueHtml(r)}</div>`
   ).join('');
   // A real <a>, not just styled text -- now that the tooltip itself receives
   // pointer events (see #tooltip-wide/#tooltip-narrow in index.html), this
@@ -64,7 +77,7 @@ function tooltipHtml(payload) {
   const hint = payload.href
     ? `<a class="hint" href="${escapeHtml(payload.href)}" target="_blank" rel="noopener noreferrer">${isTouchDevice ? 'Tap again to view on ' : 'Click to view on '}<span class="hint-link">Kalshi ↗</span></a>`
     : '';
-  return `<div class="title">${escapeHtml(payload.title)}</div>${rows}${hint}`;
+  return `<div class="title">${escapeHtml(payload.title)}</div><div class="rows">${rows}</div>${hint}`;
 }
 
 function wireTooltip(containerEl, tooltipEl, { anchorToRow = false } = {}) {
@@ -266,11 +279,11 @@ function buildRaceTooltip(r) {
   // D/R/independent order, so the row order always matches who's actually
   // ahead.
   const rows = [
-    { label: r.demCandidate + (r.demPrimaryPending ? ' (primary TBD)' : ''), value: 'D ' + fmtPct(r.demProbability), probability: r.demProbability },
-    { label: r.repCandidate + (r.repPrimaryPending ? ' (primary TBD)' : ''), value: 'R ' + fmtPct(r.repProbability), probability: r.repProbability }
+    { label: r.demCandidate + (r.demPrimaryPending ? ' (primary TBD)' : ''), party: 'D', pct: fmtPct(r.demProbability), probability: r.demProbability },
+    { label: r.repCandidate + (r.repPrimaryPending ? ' (primary TBD)' : ''), party: 'R', pct: fmtPct(r.repProbability), probability: r.repProbability }
   ];
   if (isMaterialIndependent(r)) {
-    r.otherTickers.forEach(o => rows.push({ label: o.candidate + ' (I)', value: fmtPct(o.probability), probability: o.probability }));
+    r.otherTickers.forEach(o => rows.push({ label: o.candidate + ' (I)', party: '', pct: fmtPct(o.probability), probability: o.probability }));
   }
   rows.sort((a, b) => b.probability - a.probability);
   let title = (STATE_NAMES[r.state] || r.state) + (r.raceType === 'special' ? ' — special election' : '');

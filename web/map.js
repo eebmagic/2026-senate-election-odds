@@ -30,51 +30,72 @@ function escapeHtml(s) {
   return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
+// Plain label/value row (no party-letter split), e.g. a not-up-in-2026
+// senator or the "as of" staleness row.
+function rowHtml(label, value) {
+  return '<div class="row"><span>' + escapeHtml(label) + '</span><span class="value">' + escapeHtml(value) + '</span></div>';
+}
+
+// Race-candidate row: value is split into a party letter and a percentage
+// (see .party/.pct in index.html) so the letters line up at a consistent
+// distance from the edge and the percentages right-align above one another,
+// regardless of how many digits any one row's percentage has -- mirrors
+// rowValueHtml() in app.js.
+function candidateRowHtml(label, party, pct) {
+  return '<div class="row"><span>' + escapeHtml(label) + '</span><span class="value split"><span class="party">' + escapeHtml(party) + '</span><span class="pct">' + escapeHtml(pct) + '</span></span></div>';
+}
+
 function tooltipHtml(summary, name) {
   if (!summary) return '<div class="title">' + escapeHtml(name) + '</div>';
   let html = '<div class="title">' + escapeHtml(name) + '</div>';
   const notUpSeats = summary.seats.filter(seat => !seat.isRace);
   const raceSeat = summary.seats.find(seat => seat.isRace);
 
+  // All rows (across both groups) share one CSS grid -- see .tooltip .rows
+  // in index.html -- so the value column lines up for the whole tooltip,
+  // not just within one group.
+  let rows = '';
+
   // Only label the groups when both are present -- that's the case that
   // reads as an unlabeled mashup (one senator not up alongside the actual
   // 2026 race candidates). A state with no 2026 race (both seats solid) or
   // one where every seat shown is part of the race doesn't need the split.
   if (notUpSeats.length && raceSeat) {
-    html += '<div class="group-label">Not up in 2026</div>';
+    rows += '<div class="group-label">Not up in 2026</div>';
   }
   notUpSeats.forEach(seat => {
-    html += '<div class="row"><span>' + escapeHtml(seat.senator) + '</span><span class="value">' + (seat.party === 'D' ? 'D' : 'R') + '</span></div>';
+    rows += rowHtml(seat.senator, seat.party === 'D' ? 'D' : 'R');
   });
 
   if (raceSeat) {
     if (notUpSeats.length) {
-      html += '<div class="group-label">2026 race</div>';
+      rows += '<div class="group-label">2026 race</div>';
     }
     const r = raceSeat.race;
     // Sorted by lead order (highest probability first) rather than a fixed
     // D/R/independent order, so the row order always matches who's actually
     // ahead -- mirrors buildRaceTooltip() in app.js.
     const candidateRows = [
-      { html: '<div class="row"><span>' + escapeHtml(r.demCandidate) + (r.demPrimaryPending ? ' (TBD)' : '') + '</span><span class="value">D ' + fmtPct(r.demProbability) + '</span></div>', probability: r.demProbability },
-      { html: '<div class="row"><span>' + escapeHtml(r.repCandidate) + (r.repPrimaryPending ? ' (TBD)' : '') + '</span><span class="value">R ' + fmtPct(r.repProbability) + '</span></div>', probability: r.repProbability }
+      { label: r.demCandidate + (r.demPrimaryPending ? ' (TBD)' : ''), party: 'D', pct: fmtPct(r.demProbability), probability: r.demProbability },
+      { label: r.repCandidate + (r.repPrimaryPending ? ' (TBD)' : ''), party: 'R', pct: fmtPct(r.repProbability), probability: r.repProbability }
     ];
     if (isMaterialIndependent(r)) {
       r.otherTickers.forEach(o => {
-        candidateRows.push({ html: '<div class="row"><span>' + escapeHtml(o.candidate) + ' (I)</span><span class="value">' + fmtPct(o.probability) + '</span></div>', probability: o.probability });
+        candidateRows.push({ label: o.candidate + ' (I)', party: '', pct: fmtPct(o.probability), probability: o.probability });
       });
     }
     candidateRows.sort((a, b) => b.probability - a.probability);
-    html += candidateRows.map(row => row.html).join('');
+    rows += candidateRows.map(row => candidateRowHtml(row.label, row.party, row.pct)).join('');
     if (r.stale) {
-      html += '<div class="row"><span>as of</span><span class="value">' + escapeHtml(r.staleSince || 'unknown') + '</span></div>';
+      rows += rowHtml('as of', r.staleSince || 'unknown');
     }
-    // Mirrors the seat-bar's tooltip hint (see tooltipHtml() in app.js) --
-    // only states with a 2026 race actually link out to Kalshi (see
-    // renderMap below), so only those get the call-to-action line.
-    if (r.kalshiUrl) {
-      html += '<div class="hint">Click to view on <span class="hint-link">Kalshi &#8599;</span></div>';
-    }
+  }
+  html += '<div class="rows">' + rows + '</div>';
+  // Mirrors the seat-bar's tooltip hint (see tooltipHtml() in app.js) --
+  // only states with a 2026 race actually link out to Kalshi (see
+  // renderMap below), so only those get the call-to-action line.
+  if (raceSeat && raceSeat.race.kalshiUrl) {
+    html += '<div class="hint">Click to view on <span class="hint-link">Kalshi &#8599;</span></div>';
   }
   return html;
 }
