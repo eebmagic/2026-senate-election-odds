@@ -5,7 +5,7 @@
 // topojson-client are loaded globally via <script> tags in index.html
 // (their UMD builds), not as ES module imports.
 
-import { COLORS, buildStateSummaries, fmtPct, isMaterialIndependent, colorForDemProb } from './senate-shared.js';
+import { COLORS, buildStateSummaries, fmtPct, isMaterialIndependent, colorForDemProb, isTouchDevice, HIDE_DELAY_MS } from './senate-shared.js';
 
 const FIPS_TO_POSTAL = {
   '01': 'AL', '02': 'AK', '04': 'AZ', '05': 'AR', '06': 'CA', '08': 'CO', '09': 'CT', '10': 'DE', '11': 'DC',
@@ -91,11 +91,19 @@ function tooltipHtml(summary, name) {
     }
   }
   html += '<div class="rows">' + rows + '</div>';
-  // Mirrors the seat-bar's tooltip hint (see tooltipHtml() in app.js) --
-  // only states with a 2026 race actually link out to Kalshi (see
-  // renderMap below), so only those get the call-to-action line.
+  // A real <a>, not just styled text -- mirrors the seat-bar's tooltip hint
+  // (see tooltipHtml() in app.js). On desktop this duplicates the state
+  // shape's own link, but on touch the shape deliberately doesn't navigate
+  // (see renderMap below) and this line is the only route to Kalshi, so it
+  // has to be genuinely clickable/tappable in its own right -- which is why
+  // #map-tooltip gets pointer-events:auto in index.html.
   if (raceSeat && raceSeat.race.kalshiUrl) {
-    html += '<div class="hint">Click to view on <span class="hint-link">Kalshi &#8599;</span></div>';
+    // "Tap", not the seat bar's "Tap again": there the segment itself is the
+    // link and a second tap on it navigates (see bindLink() in app.js),
+    // whereas a tapped state here never navigates and this line is the only
+    // target -- so "again" would point the user back at the wrong element.
+    const hintLabel = isTouchDevice ? 'Tap to view on ' : 'Click to view on ';
+    html += '<a class="hint" href="' + escapeHtml(raceSeat.race.kalshiUrl) + '" target="_blank" rel="noopener noreferrer">' + hintLabel + '<span class="hint-link">Kalshi &#8599;</span></a>';
   }
   return html;
 }
@@ -115,6 +123,7 @@ export async function renderMap(races) {
 
   const svg = d3.select('#map-svg');
   const tooltip = d3.select('#map-tooltip');
+  const tooltipEl = tooltip.node();
   const wrap = document.getElementById('map-wrap');
 
   svg.selectAll('*').remove();
@@ -124,22 +133,66 @@ export async function renderMap(races) {
   const projection = d3.geoAlbersUsa().fitSize([960, 600], geo);
   const path = d3.geoPath().projection(projection);
 
+  // Deferred hide, so the cursor can cross the gap between a state and its
+  // tooltip (see `gap` in positionTooltip below) without the tooltip
+  // vanishing en route -- that crossing is the only way to reach the
+  // tooltip's "Kalshi" link, so an instant hide on mouseleave would make the
+  // link unreachable and leave the map with no route to Kalshi at all.
+  let hideTimer = null;
+  function cancelHide() {
+    if (hideTimer !== null) {
+      clearTimeout(hideTimer);
+      hideTimer = null;
+    }
+  }
+  function hide() {
+    cancelHide();
+    tooltip.style('display', 'none');
+  }
+  function scheduleHide() {
+    cancelHide();
+    hideTimer = setTimeout(hide, HIDE_DELAY_MS);
+  }
+  function showFor(pathEl, d) {
+    const postal = FIPS_TO_POSTAL[d.id];
+    if (postal === 'DC' || postal === 'PR') return;
+    cancelHide();
+    tooltip
+      .style('display', 'block')
+      .html(tooltipHtml(byPostal[postal], d.properties.name));
+    positionTooltip(pathEl);
+  }
+
+  // Whether a state is itself a link depends on the input model, because the
+  // two are genuinely different interactions:
+  //
+  //   Desktop -- hover already previews the race, so a click is unambiguous:
+  //   contested states are real <a href> elements and clicking one opens
+  //   Kalshi. Being a true link (rather than a click handler calling
+  //   window.open) also keeps the browser's own affordances working:
+  //   middle-click and cmd-click, right-click "Open link in new tab", the
+  //   status-bar URL preview on hover. Same treatment as a seat-bar segment
+  //   -- see "Map states look clickable but do nothing on click" in
+  //   feedback/map-and-interactivity.md for the ask this answers.
+  //
+  //   Touch -- there is no hover, so a tap is the only way to see the tooltip
+  //   at all. If the shape were a link that same tap would also navigate,
+  //   which is the bug this branch started from. Touch states therefore stay
+  //   plain <g> and reach Kalshi through the tooltip's own link instead (see
+  //   tooltipHtml() above), which is a far larger and more stably-positioned
+  //   tap target than a small state shape anyway.
+  //
+  // Solid/uncontested states have no single race to link to, so they are
+  // plain <g> on both.
   const svgNs = 'http://www.w3.org/2000/svg';
 
-  // States with a 2026 race genuinely link out to Kalshi, same as a
-  // seat-bar segment (a real <a href>, not just a click handler) -- see
-  // "Map states look clickable but do nothing on click" in
-  // feedback/map-and-interactivity.md. Solid/uncontested states have no
-  // single race to link to, so they render as plain (non-anchor) nodes and
-  // stay non-interactive beyond the hover tooltip.
   svg.append('g')
     .selectAll('.state-node')
     .data(geo.features)
     .join(enter => enter.append(d => {
-      const postal = FIPS_TO_POSTAL[d.id];
-      const summary = byPostal[postal];
+      const summary = byPostal[FIPS_TO_POSTAL[d.id]];
       const href = summary && summary.race && summary.race.kalshiUrl;
-      if (href) {
+      if (href && !isTouchDevice) {
         const a = document.createElementNS(svgNs, 'a');
         a.setAttribute('href', href);
         a.setAttribute('target', '_blank');
@@ -161,15 +214,48 @@ export async function renderMap(races) {
       const postal = FIPS_TO_POSTAL[d.id];
       return fillFor(byPostal[postal]);
     })
+    // Touch devices skip the mouse handlers entirely and drive the tooltip
+    // from click alone: mobile browsers still emit synthetic mouseenter/
+    // mouseleave around a tap, and acting on the mouseleave would dismiss the
+    // tooltip mid-tap -- exactly when the user is reaching for its link.
     .on('mouseenter', (event, d) => {
-      const postal = FIPS_TO_POSTAL[d.id];
-      if (postal === 'DC' || postal === 'PR') return;
-      tooltip
-        .style('display', 'block')
-        .html(tooltipHtml(byPostal[postal], d.properties.name));
-      positionTooltip(event.currentTarget);
+      if (isTouchDevice) return;
+      showFor(event.currentTarget, d);
     })
-    .on('mouseleave', () => tooltip.style('display', 'none'));
+    .on('mouseleave', event => {
+      if (isTouchDevice) return;
+      // Moving straight from the state onto the tooltip isn't leaving: the
+      // tooltip's own mouseenter would cancel the hide anyway, but skipping
+      // the timer here avoids the pointless schedule/cancel churn.
+      if (event.relatedTarget && tooltipEl.contains(event.relatedTarget)) return;
+      scheduleHide();
+    })
+    .on('click', (event, d) => {
+      if (!isTouchDevice) return;
+      showFor(event.currentTarget, d);
+    });
+
+  // Keep the tooltip open while the pointer is on it, so its "Kalshi" link is
+  // actually reachable (the link is why #map-tooltip gets pointer-events:auto
+  // in index.html). Bound through d3's .on(), which replaces a same-type
+  // handler rather than stacking another one, so re-rendering the map can't
+  // accumulate duplicates on this long-lived element.
+  tooltip
+    .on('mouseenter', () => cancelHide())
+    .on('mouseleave', () => {
+      if (isTouchDevice) return;
+      scheduleHide();
+    });
+
+  if (isTouchDevice) {
+    // Tapping anywhere outside the map dismisses the open preview. The
+    // tooltip lives inside #map-wrap, so tapping its Kalshi link doesn't
+    // count as outside and won't fight that link's own navigation.
+    // Namespaced so a re-render replaces this listener instead of adding one.
+    d3.select(document).on('click.map-tooltip', event => {
+      if (!wrap.contains(event.target)) hide();
+    });
+  }
 
   // Anchor the tooltip to the hovered state's shape instead of the cursor --
   // same stable-position + tail treatment as the seat-bar's tooltips (see

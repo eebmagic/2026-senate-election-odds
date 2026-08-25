@@ -122,13 +122,15 @@
      their trigger rather than pinned under the cursor (see
      positionAboveOrBelowRow() in app.js), so the cursor has to actually
      cross onto the tooltip box to keep it open -- unlike the map tooltip,
-     which stays cursor-adjacent and pointer-events:none per the base rule
-     above. Both need to actually receive the hover (and, for the scrollable
-     long-list variant, wheel/touch scroll input), so they can't stay
-     pointer-events:none; the mouseenter/mouseleave handling in app.js's
-     wireTooltip() keeps the tooltip open while the cursor is on it and
-     hides it (after a short grace period) once the cursor leaves for good. */
-  #tooltip-wide, #tooltip-narrow { pointer-events: auto; }
+     which stays cursor-adjacent. All three need to actually receive
+     pointer input though: the seat-bar ones for hover (and, for the
+     scrollable long-list variant, wheel/touch scroll input) via the
+     mouseenter/mouseleave handling in app.js's wireTooltip(); the map one so
+     its own "Kalshi" hint link (see tooltipHtml() in map.js) is reachable --
+     on touch, where the state shape deliberately doesn't navigate, that
+     in-tooltip link is the only way to get to Kalshi at all. So none of the
+     three can stay pointer-events:none per the base rule above. */
+  #tooltip-wide, #tooltip-narrow, #map-tooltip { pointer-events: auto; }
   .tooltip.scrollable { scrollbar-gutter: stable; }
   /* Keep the scrollbar itself visible as a hint that the list scrolls,
      rather than relying on the OS's default overlay-scrollbar behavior
@@ -189,7 +191,7 @@
      but only the "Kalshi ↗" span (see .hint-link below) is underlined, so
      the underline reads as pointing at the destination rather than
      decorating the whole instruction sentence. */
-  .tooltip .hint { display: block; margin-top: 6px; padding-top: 6px; border-top: 1px solid rgba(250,248,244,0.25); font-size: 11px; color: #9a958c; white-space: nowrap; }
+  .tooltip .hint { display: block; margin-top: 6px; padding-top: 6px; border-top: 1px solid rgba(250,248,244,0.25); font-size: 11px; color: #9a958c; white-space: nowrap; text-decoration: none; }
   .tooltip .hint .hint-link { text-decoration: underline; }
   .tooltip .hint:hover { color: #cfcac0; }
 
