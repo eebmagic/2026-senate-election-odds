@@ -98,8 +98,8 @@
      leans divider lands a segment or two away from the 50-seat line. */
   .lean-band-wide { position: relative; width: 100%; height: 30px; margin-top: 10px; }
   .strong-group { position: absolute; top: 0; }
-  .strong-group.dem { color: #1c3f7a; }
-  .strong-group.rep { color: #8a2a22; }
+  .strong-group.dem { color: #2f5aa8; }
+  .strong-group.rep { color: #b3372c; }
   /* Open-bottomed bracket: it reads as pointing up at the run of segments it
      spans. currentColor keeps it in step with the party color on .strong-group. */
   .strong-bracket { height: 6px; border: 2px solid currentColor; border-bottom: none; border-radius: 2px 2px 0 0; box-sizing: border-box; }
@@ -113,9 +113,13 @@
      the bar -- a tick floating in the whitespace reads as a stray artifact
      rather than a divider at a specific point in the ordering. */
   .lean-tick { display: block; width: 1px; height: 20px; background: #5b574f; }
-  .lean-label { position: absolute; top: 22px; font-size: 10px; font-weight: 700; color: #5b574f; white-space: nowrap; }
-  .lean-label.lean-d { right: 5px; }
-  .lean-label.lean-r { left: 5px; }
+  /* The labels (and their arrows) carry the party colors the "not up" blocks
+     and the Strong D/R brackets use, so every marker naming a side of the
+     bar is keyed the same way. The tick itself stays ink-soft -- it's a
+     divider, not a party marker. */
+  .lean-label { position: absolute; top: 22px; font-size: 10px; font-weight: 700; white-space: nowrap; }
+  .lean-label.lean-d { right: 5px; color: #2f5aa8; }
+  .lean-label.lean-r { left: 5px; color: #b3372c; }
 
   .bar-wrap-narrow { display: none; justify-content: center; padding-right: 78px; box-sizing: border-box; }
   @media (max-width: 719px) {
@@ -172,8 +176,8 @@
      "50 seats" label), so the group names ride inside the break itself. */
   .seg-gap-narrow { width: 100%; background: #faf8f4; display: flex; align-items: center; justify-content: center; gap: 12px; }
   .gap-label { font-size: 9px; font-weight: 700; letter-spacing: 0.02em; white-space: nowrap; }
-  .gap-label.dem { color: #1c3f7a; }
-  .gap-label.rep { color: #8a2a22; }
+  .gap-label.dem { color: #2f5aa8; }
+  .gap-label.rep { color: #b3372c; }
   /* Unlike .majority-line-narrow this stops at the bar's edge instead of
      crossing it: at 1px it would be lost among the cream segment borders, and
      darkening it enough to read over the segment fills would make the quieter
