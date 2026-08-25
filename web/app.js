@@ -5,7 +5,9 @@
 // The wide (>=720px) and narrow (<720px) layouts are both built up front and
 // switched with a CSS media query (see index.html) rather than a JS resize
 // listener -- the README calls this out as the cleaner production approach
-// since none of the layout math below depends on pixel width, only percentages.
+// since almost none of the layout math below depends on pixel width, only
+// percentages (the narrow bar's majority line is the one exception -- see
+// NARROW_TRACK_HEIGHT below).
 
 import {
   SOLID_SEATS,
@@ -19,6 +21,15 @@ import {
 import { renderMap } from './map.js';
 
 const CONTESTED_UNITS = 130;
+
+// The narrow (<720px) bar's solid dem/rep blocks are capped to a fixed pixel
+// height instead of the seat-count-proportional flex used everywhere else
+// (see .solid-block-narrow / .bar-track-narrow in index.html) -- so the
+// majority line's position within that bar can't use the same percentage
+// math as the rest of computeVals. These mirror those CSS values; keep them
+// in sync if the CSS changes.
+const NARROW_TRACK_HEIGHT = 900;
+const NARROW_SOLID_BLOCK_HEIGHT = 60;
 
 // No hover on touchscreens: a linked segment needs its tooltip treated as a
 // preview, with an explicit second tap to actually follow the link (see
@@ -302,6 +313,13 @@ function computeVals(data) {
   const seatsIntoContested = 50 - demSolidCount;
   const majorityLinePos = demBlockPct + (seatsIntoContested / contested.length) * contestedPct;
 
+  // Narrow-bar-specific line position: the solid blocks there render at a
+  // fixed NARROW_SOLID_BLOCK_HEIGHT (not seat-count-proportional -- see the
+  // constant's comment), so the fraction-of-total used by majorityLinePos
+  // above doesn't line up with where the segments actually fall on screen.
+  const narrowContestedHeight = NARROW_TRACK_HEIGHT - 2 * NARROW_SOLID_BLOCK_HEIGHT;
+  const majorityLinePosNarrow = ((NARROW_SOLID_BLOCK_HEIGHT + (seatsIntoContested / contested.length) * narrowContestedHeight) / NARROW_TRACK_HEIGHT) * 100;
+
   // scrollable: true marks the long-list tooltip variant (see .tooltip.scrollable
   // in index.html + wireTooltip in this file) so the full 30+ name list is
   // actually reachable by scroll, not just visually truncated.
@@ -319,7 +337,7 @@ function computeVals(data) {
 
   return {
     races, segments, demSolidCount, repSolidCount,
-    demSolidLabelPos, repSolidLabelPos, majorityLinePos,
+    demSolidLabelPos, repSolidLabelPos, majorityLinePos, majorityLinePosNarrow,
     demBlockFlex: demSolidCount + ' 1 0%',
     repBlockFlex: repSolidCount + ' 1 0%',
     contestedWrapFlex: CONTESTED_UNITS + ' 1 0%',
@@ -409,8 +427,8 @@ function renderNarrowBar(vals) {
             </div>
             <div class="solid-block-narrow rep" style="flex:${vals.repBlockFlex};" data-tip="rep-solid"></div>
           </div>
-          <div class="majority-line-narrow" style="top:${vals.majorityLinePos}%;"></div>
-          <div class="majority-label-narrow" style="top:${vals.majorityLinePos}%;">51 to control</div>
+          <div class="majority-line-narrow" style="top:${vals.majorityLinePosNarrow}%;"></div>
+          <div class="majority-label-narrow" style="top:${vals.majorityLinePosNarrow}%;">51 to control</div>
         </div>
         <div class="solid-caption rep">${vals.repSolidCount} R seats not up</div>
         <div class="tooltip" id="tooltip-narrow"></div>
