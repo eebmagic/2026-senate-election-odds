@@ -26,6 +26,14 @@ export const COLORS = {
 export const TOSSUP_LOW = 0.40;
 export const TOSSUP_HIGH = 0.60;
 
+// A race counts as "strong" for one party once that party's *own* leading
+// candidate is at or above this. Deliberately separate from TOSSUP_LOW/HIGH:
+// those drive the continuous color scale (and are stated in terms of the
+// Democratic probability), while this is the one-sided cutoff the seat bar
+// uses to split its ordered race list into Strong D / lean-and-tossup /
+// Strong R groups.
+export const STRONG_LEAN = 0.80;
+
 // No hover on touchscreens, so tooltips there open on tap instead, and
 // mouseenter/mouseleave are ignored entirely -- mobile browsers still fire
 // synthetic mouse events on tap, and acting on them would dismiss a tooltip
