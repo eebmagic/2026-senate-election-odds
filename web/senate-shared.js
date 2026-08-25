@@ -26,6 +26,23 @@ export const COLORS = {
 export const TOSSUP_LOW = 0.40;
 export const TOSSUP_HIGH = 0.60;
 
+// No hover on touchscreens, so tooltips there open on tap instead, and
+// mouseenter/mouseleave are ignored entirely -- mobile browsers still fire
+// synthetic mouse events on tap, and acting on them would dismiss a tooltip
+// mid-tap, before its link could be hit. See wireTooltip() in app.js and the
+// state-node handlers in map.js. Detected once, at module load.
+export const isTouchDevice = window.matchMedia('(hover: none), (pointer: coarse)').matches;
+
+// Grace period before a mouseleave-triggered hide actually takes effect.
+// Tooltips are anchored a few pixels off their trigger (see the `gap` in
+// positionAboveOrBelowRow() in app.js / positionTooltip() in map.js), and a
+// mouse moving toward the tooltip can land in that gap for a moment -- on
+// neither the trigger nor the tooltip -- which would otherwise fire an
+// instant mouseleave and dismiss the tooltip before the cursor ever reaches
+// it. Deferring the hide gives that crossing time to land on one of them and
+// cancel it. This is what makes a tooltip's own link clickable at all.
+export const HIDE_DELAY_MS = 150;
+
 // USPS postal code -> full state name, for tooltip headers (app.js's
 // buildRaceTooltip()) that would otherwise show a redundant abbreviation
 // right next to the segment's own on-cell abbreviation label. Mirrors the

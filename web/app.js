@@ -16,7 +16,9 @@ import {
   fmtPct,
   seatPartyResolved,
   isMaterialIndependent,
-  raceHasPendingPrimary
+  raceHasPendingPrimary,
+  isTouchDevice,
+  HIDE_DELAY_MS
 } from './senate-shared.js';
 import { renderMap } from './map.js';
 
@@ -30,20 +32,6 @@ const CONTESTED_UNITS = 130;
 // in sync if the CSS changes.
 const NARROW_TRACK_HEIGHT = 900;
 const NARROW_SOLID_BLOCK_HEIGHT = 60;
-
-// No hover on touchscreens: a linked segment needs its tooltip treated as a
-// preview, with an explicit second tap to actually follow the link (see
-// bindLink below). Detected once, not per element.
-const isTouchDevice = window.matchMedia('(hover: none), (pointer: coarse)').matches;
-
-// Grace period before a mouseleave-triggered hide actually takes effect.
-// Row-anchored tooltips sit a few pixels off their trigger (see the `gap` in
-// positionAboveOrBelowRow below), and a mouse moving slowly toward the
-// tooltip can land in that gap for a moment -- on neither the trigger nor
-// the tooltip -- which would otherwise fire an instant mouseleave and
-// dismiss the tooltip before the cursor ever reaches it. Deferring the hide
-// gives that crossing time to land back on one of them and cancel it.
-const HIDE_DELAY_MS = 150;
 
 function escapeHtml(s) {
   return String(s)
