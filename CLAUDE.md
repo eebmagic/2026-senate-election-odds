@@ -56,9 +56,17 @@ This dir is a symlink to a folder in my obsidian repo.
 You should ONLY edit/add files in this folder, nothing else in my obsidian files.
 The `Senate Election Map.md` is a kanban board which tracks the state of workitems, as well as links to the work items.
 The works items are individual files in the `task-items/` subdir.
+In a board entry `[[File Name|Display Text]]`, the text before the `|` is
+the filename in `task-items/` (add `.md`); the rest is just a label.
+An item's status is the column heading it sits under, *not* the
+`- [ ]`/`- [x]` checkbox — Rejected items are unchecked too.
 Each of these should hopefully map to a specific branch + PR.
 If you are working an item that already has a file, then add a note on the file branch and PR when they are each created.
 When PRs are merged and you find that the item is not marked as DONE, then feel free to progress the item in the kanban.
+
+**Don't create new task items unless I explicitly ask.** Updating existing
+items is fine (branch/PR notes, column moves). If work doesn't match any
+existing item, just say so — don't file one for it.
 
 This is what the structure of that dir looks like:
 ```bash (truncated tree)
