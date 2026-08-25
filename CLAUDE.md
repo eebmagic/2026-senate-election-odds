@@ -65,6 +65,7 @@ Each of these should hopefully map to a specific branch + PR.
 If you are working an item that already has a file, then add a note on the file branch and PR when they are each created.
 When the PR is created (or when it is generally ready for review) then you can move it to the Review list/column.
 When PRs are merged and you find that the item is not marked as DONE, then feel free to progress the item in the kanban.
+When you've started working on an item, make sure that it is moved into the "In Progress" group.
 
 **Don't create new task items unless I explicitly ask.** Updating existing
 items is fine (branch/PR notes, column moves). If work doesn't match any
