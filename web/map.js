@@ -52,13 +52,20 @@ function tooltipHtml(summary, name) {
       html += '<div class="group-label">2026 race</div>';
     }
     const r = raceSeat.race;
-    html += '<div class="row"><span>' + escapeHtml(r.demCandidate) + (r.demPrimaryPending ? ' (TBD)' : '') + '</span><span class="value">D ' + fmtPct(r.demProbability) + '</span></div>';
-    html += '<div class="row"><span>' + escapeHtml(r.repCandidate) + (r.repPrimaryPending ? ' (TBD)' : '') + '</span><span class="value">R ' + fmtPct(r.repProbability) + '</span></div>';
+    // Sorted by lead order (highest probability first) rather than a fixed
+    // D/R/independent order, so the row order always matches who's actually
+    // ahead -- mirrors buildRaceTooltip() in app.js.
+    const candidateRows = [
+      { html: '<div class="row"><span>' + escapeHtml(r.demCandidate) + (r.demPrimaryPending ? ' (TBD)' : '') + '</span><span class="value">D ' + fmtPct(r.demProbability) + '</span></div>', probability: r.demProbability },
+      { html: '<div class="row"><span>' + escapeHtml(r.repCandidate) + (r.repPrimaryPending ? ' (TBD)' : '') + '</span><span class="value">R ' + fmtPct(r.repProbability) + '</span></div>', probability: r.repProbability }
+    ];
     if (isMaterialIndependent(r)) {
       r.otherTickers.forEach(o => {
-        html += '<div class="row"><span>' + escapeHtml(o.candidate) + ' (I)</span><span class="value">' + fmtPct(o.probability) + '</span></div>';
+        candidateRows.push({ html: '<div class="row"><span>' + escapeHtml(o.candidate) + ' (I)</span><span class="value">' + fmtPct(o.probability) + '</span></div>', probability: o.probability });
       });
     }
+    candidateRows.sort((a, b) => b.probability - a.probability);
+    html += candidateRows.map(row => row.html).join('');
     if (r.stale) {
       html += '<div class="row"><span>as of</span><span class="value">' + escapeHtml(r.staleSince || 'unknown') + '</span></div>';
     }

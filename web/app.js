@@ -262,13 +262,17 @@ function wireTooltip(containerEl, tooltipEl, { anchorToRow = false } = {}) {
 }
 
 function buildRaceTooltip(r) {
+  // Sorted by lead order (highest probability first) rather than a fixed
+  // D/R/independent order, so the row order always matches who's actually
+  // ahead.
   const rows = [
-    { label: r.demCandidate + (r.demPrimaryPending ? ' (primary TBD)' : ''), value: 'D ' + fmtPct(r.demProbability) },
-    { label: r.repCandidate + (r.repPrimaryPending ? ' (primary TBD)' : ''), value: 'R ' + fmtPct(r.repProbability) }
+    { label: r.demCandidate + (r.demPrimaryPending ? ' (primary TBD)' : ''), value: 'D ' + fmtPct(r.demProbability), probability: r.demProbability },
+    { label: r.repCandidate + (r.repPrimaryPending ? ' (primary TBD)' : ''), value: 'R ' + fmtPct(r.repProbability), probability: r.repProbability }
   ];
   if (isMaterialIndependent(r)) {
-    r.otherTickers.forEach(o => rows.push({ label: o.candidate + ' (I)', value: fmtPct(o.probability) }));
+    r.otherTickers.forEach(o => rows.push({ label: o.candidate + ' (I)', value: fmtPct(o.probability), probability: o.probability }));
   }
+  rows.sort((a, b) => b.probability - a.probability);
   let title = (STATE_NAMES[r.state] || r.state) + (r.raceType === 'special' ? ' — special election' : '');
   if (r.stale) title += ' (as of ' + formatDate(r.staleSince) + ')';
   return { title, rows, href: r.kalshiUrl };
