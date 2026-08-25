@@ -69,7 +69,15 @@
   .seg-wide:hover .seg-state, .seg-narrow:hover .seg-state,
   .seg-wide:hover .seg-pct, .seg-narrow:hover .seg-pct,
   .seg-wide:hover .seg-party, .seg-narrow:hover .seg-party { font-weight: 900; }
-  .ind-mark-h { position: absolute; top: 0; left: 0; right: 0; height: 3px; background: #c98a2c; }
+  /* Marks a race with a notable (>10%) independent candidate. A gold sliver
+     along the segment edge used to read as a border/rendering artifact and
+     needed its own color key in the legend; an asterisk is the conventional
+     "see the caveat" mark and survives being shrunk down at narrow widths.
+     Cream glyph with a dark halo so it clears WCAG contrast against the
+     whole blue->purple->red segment scale, and it's placed clear of the
+     centered seg-label stack in both layouts. */
+  .ind-mark { font-size: 15px; font-weight: 700; line-height: 1; color: #faf8f4; text-shadow: 0 0 2px rgba(33,31,28,0.95), 0 0 4px rgba(33,31,28,0.6); pointer-events: none; }
+  .ind-mark-h { position: absolute; top: 2px; left: 50%; transform: translateX(-50%); }
   /* Badge marking "primary not yet decided" -- a plain page-colored sliver
      used to read as a rendering artifact rather than an intentional status
      marker, so this is a small filled "?" badge with its own border instead,
@@ -116,7 +124,7 @@
   .seg-narrow { position: relative; flex: 1 1 0%; width: 100%; border-bottom: 1px solid rgba(250,248,244,0.5); box-sizing: border-box; cursor: pointer; color: #fff; text-decoration: none; display: flex; align-items: center; justify-content: center; gap: 5px; }
   .seg-narrow .seg-state { font-size: 10px; }
   .pending-badge { display: inline-flex; align-items: center; justify-content: center; width: 12px; height: 12px; border-radius: 50%; background: #faf8f4; border: 1.5px solid #211f1c; color: #211f1c; font-size: 9px; font-weight: 800; line-height: 1; pointer-events: none; }
-  .ind-mark-v { position: absolute; top: 0; bottom: 0; left: 0; width: 3px; background: #c98a2c; }
+  .ind-mark-v { position: absolute; top: 50%; left: 7px; transform: translateY(-24%); }
   .pending-mark-v { position: absolute; top: 50%; right: 4px; transform: translateY(-50%); }
   .majority-line-narrow { position: absolute; left: -8px; right: -8px; height: 2px; background: #211f1c; transform: translateY(-1px); pointer-events: none; }
   .majority-label-narrow { position: absolute; right: -8px; transform: translate(100%, -50%); font-size: 10px; font-weight: 700; color: #211f1c; white-space: nowrap; pointer-events: none; padding-left: 4px; }
@@ -124,8 +132,11 @@
   .legend { display: flex; gap: 22px; flex-wrap: wrap; margin-top: 14px; font-size: 12px; color: #5b574f; }
   .legend-item { display: flex; align-items: center; gap: 6px; }
   .swatch { display: inline-block; }
-  .swatch.block { width: 12px; height: 12px; border-radius: 2px; }
-  .swatch.line { width: 12px; height: 3px; }
+  /* Legend chip for the asterisk: the same glyph on a mid-scale segment
+     color, so the key looks like what's actually drawn on the bar (a bare
+     cream asterisk would vanish against the page background). */
+  .swatch.ind { position: relative; width: 14px; height: 14px; border-radius: 2px; background: #8a5a8f; }
+  .swatch.ind .ind-mark { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -24%); }
 
   /* Tooltip (shared by spectrum + map) */
   .tooltip { position: absolute; pointer-events: none; background: #211f1c; color: #faf8f4; padding: 10px 13px; border-radius: 4px; font-size: 12.5px; line-height: 1.5; min-width: 150px; max-height: 260px; overflow-y: auto; overflow-x: hidden; box-shadow: 0 8px 20px rgba(0,0,0,0.28); z-index: 5; transform: translate(-50%, -100%); display: none; }
@@ -262,11 +273,10 @@
       <div id="bar-narrow-container"></div>
 
       <div class="legend">
-        <div class="legend-item"><span class="swatch block" style="background:#2f5aa8;"></span>Solid Democratic</div>
-        <div class="legend-item"><span class="swatch block" style="background:linear-gradient(90deg,#8a5a8f,#2f5aa8);"></span>Contested, leans D</div>
-        <div class="legend-item"><span class="swatch block" style="background:linear-gradient(90deg,#b3372c,#8a5a8f);"></span>Contested, leans R</div>
-        <div class="legend-item"><span class="swatch block" style="background:#b3372c;"></span>Solid Republican</div>
-        <div class="legend-item"><span class="swatch line" style="background:#c98a2c;"></span>Independent polling above 10%</div>
+        <!-- Only the two entries that aren't self-evident from the bar
+             itself: the blue->purple->red gradient reads as a party scale
+             without a key, so its four swatches were dropped. -->
+        <div class="legend-item"><span class="swatch ind" aria-hidden="true"><span class="ind-mark">&#42;</span></span>Independent polling above 10%</div>
         <div class="legend-item"><span class="pending-badge">?</span>Primary not yet decided</div>
       </div>
     </div>
