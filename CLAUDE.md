@@ -40,10 +40,11 @@ resize to, etc.).
 `but pr edit`/`update` command, only `new` (no-ops harmlessly if a PR already
 exists for that branch — it won't touch the existing title/body, verify via
 the GitHub API if you need to confirm), `auto-merge`, `set-draft`,
-`set-ready`, `template`. `gh` is not installed on this machine. If a PR's
-description goes stale after later commits, either write out the updated
-title/body text for the user to paste in themselves, or ask before installing
-`gh`.
+`set-ready`, `template`. Use `gh` for that instead — it *is* installed and
+authed (`gh pr edit <n> --repo eebmagic/2026-senate-election-odds --title ...
+--body-file ...`). Prefer `--body-file` over `--body` so the markdown survives
+the shell intact. Editing a PR modifies public content, so ask before the
+first edit of a given PR rather than rewriting a description unprompted.
 
 **Merging to `main` deploys live** — `.github/workflows/deploy-pages.yml`
 auto-publishes `web/**` to GitHub Pages on every push to `main`. Treat a PR
