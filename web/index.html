@@ -132,10 +132,11 @@
   .legend { display: flex; gap: 22px; flex-wrap: wrap; margin-top: 14px; font-size: 12px; color: #5b574f; }
   .legend-item { display: flex; align-items: center; gap: 6px; }
   .swatch { display: inline-block; }
-  /* Legend chip for the asterisk: the same glyph on a mid-scale segment
-     color, so the key looks like what's actually drawn on the bar (a bare
-     cream asterisk would vanish against the page background). */
-  .swatch.ind { position: relative; width: 14px; height: 14px; border-radius: 2px; background: #8a5a8f; }
+  /* Legend chip for the asterisk: the same glyph on a segment color, so the
+     key looks like what's actually drawn on the bar (a bare cream asterisk
+     would vanish against the page background). Uses COLORS.rep, which is
+     what the only currently-flagged race (NE) is actually shaded. */
+  .swatch.ind { position: relative; width: 14px; height: 14px; border-radius: 2px; background: #b3372c; }
   .swatch.ind .ind-mark { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -24%); }
 
   /* Tooltip (shared by spectrum + map) */
