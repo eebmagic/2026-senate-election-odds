@@ -5,7 +5,7 @@
 // topojson-client are loaded globally via <script> tags in index.html
 // (their UMD builds), not as ES module imports.
 
-import { COLORS, buildStateSummaries, fmtPct, isMaterialIndependent } from './senate-shared.js';
+import { COLORS, buildStateSummaries, fmtPct, isMaterialIndependent, colorForDemProb } from './senate-shared.js';
 
 const FIPS_TO_POSTAL = {
   '01': 'AL', '02': 'AK', '04': 'AZ', '05': 'AR', '06': 'CA', '08': 'CO', '09': 'CT', '10': 'DE', '11': 'DC',
@@ -16,10 +16,14 @@ const FIPS_TO_POSTAL = {
   '50': 'VT', '51': 'VA', '53': 'WA', '54': 'WV', '55': 'WI', '56': 'WY', '72': 'PR'
 };
 
+// Only states with an actual 2026 race are colored, and only off that
+// race's own odds -- the continuous red/purple/blue scale shared with the
+// seat-bar gradient (see colorForDemProb() in senate-shared.js), not a
+// solid/split/tossup classification. States with no 2026 race (both seats
+// not up) are grayed out rather than colored by their current senators.
 function fillFor(summary) {
-  if (!summary) return COLORS.neutral;
-  if (summary.status === 'tossup' || summary.status === 'split') return 'url(#stripes)';
-  return summary.party === 'D' ? COLORS.dem : COLORS.rep;
+  if (!summary || !summary.race) return COLORS.neutral;
+  return colorForDemProb(summary.race.demProbability);
 }
 
 function escapeHtml(s) {
@@ -86,16 +90,6 @@ export async function renderMap(races) {
   const wrap = document.getElementById('map-wrap');
 
   svg.selectAll('*').remove();
-
-  svg.append('defs').append('pattern')
-    .attr('id', 'stripes')
-    .attr('width', 8).attr('height', 8)
-    .attr('patternTransform', 'rotate(45)')
-    .attr('patternUnits', 'userSpaceOnUse')
-    .call(p => {
-      p.append('rect').attr('width', 8).attr('height', 8).attr('fill', COLORS.rep);
-      p.append('rect').attr('width', 4).attr('height', 8).attr('fill', COLORS.dem);
-    });
 
   const topology = await loadTopology();
   const geo = topojson.feature(topology, topology.objects.states);
