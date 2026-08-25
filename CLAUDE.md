@@ -27,6 +27,8 @@ qualifier word, keep the distinctive one): `color-and-contrast.md` →
 branch/PR per feedback item (or a tight cluster of directly-related
 follow-ups) — don't bundle unrelated items onto one branch.
 
+My preferred process is to have each claude session map pretty cleanly to a single gitbutler branch. There may be exceptions, when relevant check with me if a change should be a new branch.
+
 **PRs:** `but push <branch>` then `but pr new <branch> -m $'Title\n\nBody'`.
 Always pass an explicit `-m` — `-t` (default title) falls back to the raw
 branch name for any branch with more than one commit, which is nearly always.
@@ -48,27 +50,25 @@ auto-publishes `web/**` to GitHub Pages on every push to `main`. Treat a PR
 merge as a production deploy: verify in the browser before considering an
 item done, not just via code review.
 
-## The feedback-review workflow (`feedback/*.md`)
+## Tracking work items (Obsidian Kanban)
+There is a linked dir: senate-election-map-kanban/
+This dir is a symlink to a folder in my obsidian repo.
+You should ONLY edit/add files in this folder, nothing else in my obsidian files.
+The `Senate Election Map.md` is a kanban board which tracks the state of workitems, as well as links to the work items.
+The works items are individual files in the `task-items/` subdir.
+Each of these should hopefully map to a specific branch + PR.
+If you are working an item that already has a file, then add a note on the file branch and PR when they are each created.
+When PRs are merged and you find that the item is not marked as DONE, then feel free to progress the item in the kanban.
 
-Each file holds review findings with `Severity`, `Source`, `Suggested fix`,
-`Review notes`, and a `Decision` (`Accept` / `Rejected` / `Discuss/Refine`).
-`feedback/README.md` explains the review process itself.
-
-When you implement an `Accept`-ed item:
-1. Prepend `✅ ` to the item's `##` heading (or `⚠️ ` if you couldn't cleanly
-   verify it live — see below — with a one-line reason inline).
-2. Add an `**Implemented:** <branch-name>` line under its `Decision:` line,
-   with a short description of what changed and how it was verified.
-3. Once merged, a `**Merge status:** Merged into main (PR #N)` line is worth
-   adding too (check via the GitHub API's `merged`/`merged_at` field, or ask
-   the user which PRs they've merged rather than assuming).
-4. Don't touch any other item in the file while doing this.
-
-Only implement items whose `Decision` is actually `Accept` — `Discuss/Refine`
-means a product call is still pending; don't implement those without asking
-first. A `Decision` can change after the fact (e.g. `Accept` → `Rejected`
-post-implementation) — that's a legitimate outcome, not a bug to fix; leave
-the branch/PR as-is unless told otherwise.
+This is what the structure of that dir looks like:
+```bash (truncated tree)
+senate-election-map-kanban
+├── Senate Election Map.md
+└── task-items
+    ├── Alaska Ranked-Choice Process.md
+    ├── Bundle Size Optimization.md
+    ...
+```
 
 ## Running & verifying locally
 

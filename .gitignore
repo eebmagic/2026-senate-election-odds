@@ -1,4 +1,5 @@
 *.swp
 **/*.swp
+senate-election-map-kanban
 
 __pycache__/
