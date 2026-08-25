@@ -416,7 +416,7 @@ function renderWideBar(vals) {
   const container = document.getElementById('bar-wide-container');
   container.innerHTML = `
     <div class="bar-wrap-wide" id="bar-wide">
-      <div class="callout" style="left:${vals.majorityLinePos}%; color:#211f1c;">51 seats to control</div>
+      <div class="callout" style="left:${vals.majorityLinePos}%; color:#211f1c;">50 seats</div>
       <div class="callout" style="left:${vals.demSolidLabelPos}%; color:#1c3f7a;">${vals.demSolidCount} D seats not up</div>
       <div class="callout" style="left:${vals.repSolidLabelPos}%; color:#8a2a22;">${vals.repSolidCount} R seats not up</div>
       <div class="bar-wide">
@@ -457,7 +457,7 @@ function renderNarrowBar(vals) {
             <div class="solid-block-narrow rep" style="flex:${vals.repBlockFlex};" data-tip="rep-solid"></div>
           </div>
           <div class="majority-line-narrow" style="top:${vals.majorityLinePosNarrow}%;"></div>
-          <div class="majority-label-narrow" style="top:${vals.majorityLinePosNarrow}%;">51 to control</div>
+          <div class="majority-label-narrow" style="top:${vals.majorityLinePosNarrow}%;">50 seats</div>
         </div>
         <div class="solid-caption rep">${vals.repSolidCount} R seats not up</div>
         <div class="tooltip" id="tooltip-narrow"></div>
