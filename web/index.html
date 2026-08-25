@@ -159,13 +159,30 @@
      these tooltip variants never approach the 260px cap). */
   #tooltip-wide:not(.scrollable), #tooltip-narrow:not(.scrollable), #map-tooltip { overflow: visible; }
   .tooltip .title { font-weight: 700; font-size: 13.5px; margin-bottom: 3px; white-space: nowrap; }
+  /* Rows share one CSS grid (label column + value column) instead of each
+     row flexing independently -- a shared grid gives every row's value
+     column the same width (the widest value in the tooltip), so a party
+     letter always sits the same distance from the label regardless of how
+     many digits that row's own percentage happens to have (e.g. "R 1%" vs
+     "D 99%" no longer staggers the letters -- see .party/.pct below). */
+  .tooltip .rows { display: grid; grid-template-columns: 1fr auto; column-gap: 14px; font-variant-numeric: tabular-nums; white-space: nowrap; }
   /* Sub-heading inside a tooltip that separates unrelated groups of rows,
      e.g. the map tooltip's "not up in 2026" senator vs. the actual 2026
-     race candidates -- see tooltipHtml() in map.js. */
-  .tooltip .group-label { font-size: 10.5px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.03em; color: #9a958c; margin: 6px 0 2px; white-space: nowrap; }
+     race candidates -- see tooltipHtml() in map.js. Spans both grid columns
+     since it isn't part of the label/value pairing. */
+  .tooltip .group-label { grid-column: 1 / -1; font-size: 10.5px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.03em; color: #9a958c; margin: 6px 0 2px; white-space: nowrap; }
   .tooltip .group-label:first-of-type { margin-top: 2px; }
-  .tooltip .row { display: flex; justify-content: space-between; gap: 14px; font-variant-numeric: tabular-nums; white-space: nowrap; }
-  .tooltip .row .value { color: #cfcac0; }
+  /* The row itself renders no box of its own -- display:contents promotes
+     its label/value spans directly into the shared .rows grid above, which
+     is what makes the value column line up across rows. */
+  .tooltip .row { display: contents; }
+  .tooltip .row .value { color: #cfcac0; text-align: right; }
+  /* Race rows split their value into a party letter and a percentage (see
+     rowValueHtml() in app.js / tooltipHtml() in map.js) so the two can be
+     pinned to opposite ends of the (now fixed-width) value column: the
+     letter flush to the label side, the percentage flush to the tooltip's
+     edge. */
+  .tooltip .row .value.split { display: flex; justify-content: space-between; gap: 4px; }
   /* Now a real <a> (see tooltipHtml() in app.js) -- block + explicit color
      override the global `a`/`a:hover` rules (blue, meant for the page body)
      so it keeps reading as muted tooltip text. The whole line is clickable,
