@@ -62,6 +62,7 @@ An item's status is the column heading it sits under, *not* the
 `- [ ]`/`- [x]` checkbox — Rejected items are unchecked too.
 Each of these should hopefully map to a specific branch + PR.
 If you are working an item that already has a file, then add a note on the file branch and PR when they are each created.
+When the PR is created (or when it is generally ready for review) then you can move it to the Review list/column.
 When PRs are merged and you find that the item is not marked as DONE, then feel free to progress the item in the kanban.
 
 **Don't create new task items unless I explicitly ask.** Updating existing
