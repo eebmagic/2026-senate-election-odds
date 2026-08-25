@@ -39,6 +39,16 @@ CONTROLS_EVENT_TICKER = "CONTROLS-2026"
 # the most accurate signal available in this payload.
 GENERIC_CANDIDATE_RE = re.compile(r"^(democratic|republican)( \(\w+\))? party$", re.IGNORECASE)
 
+# Most events price one market per party, but a state with no party primaries
+# (Alaska -- see docs/election-processes.md) is priced per *candidate*
+# instead, with every name on the ballot listed. Those events carry a
+# "candidateParties" map in event_ticker_map.json assigning the real
+# contenders to a party lane; everyone at or below this share is a long shot
+# who would otherwise land in the tooltip as a spurious "independent", so
+# they're dropped before normalization and their (rounding-scale) probability
+# is spread across the remaining candidates.
+MINOR_CANDIDATE_THRESHOLD = 0.05
+
 
 def load_event_map():
     raw = json.loads(EVENT_MAP_PATH.read_text())
@@ -85,23 +95,41 @@ def is_primary_pending(market) -> bool:
     return bool(GENERIC_CANDIDATE_RE.match(name))
 
 
+def market_price(market) -> float:
+    try:
+        return float(market["last_price_dollars"])
+    except (KeyError, TypeError, ValueError):
+        return 0.0
+
+
+def market_side(ticker: str, event_ticker: str, candidate_parties):
+    """Which lane a market belongs to: "D", "R", or None for anything else
+    (an independent, or an unmapped candidate in a per-candidate event).
+
+    Party-level events encode the lane in the ticker suffix itself; a
+    per-candidate event's suffix is an abbreviated name, so the lane comes
+    from that event's checked-in candidateParties map instead."""
+    suffix = outcome_suffix(ticker, event_ticker)
+    if candidate_parties is not None:
+        return candidate_parties.get(suffix)
+    return suffix if suffix in ("D", "R") else None
+
+
 def normalize_outcomes(markets):
     """Return {ticker: normalized_probability} so a race's outcomes sum to 1.0,
     per the README: last_price_dollars values don't sum exactly due to
     bid/ask spread."""
-    prices = {}
-    for m in markets:
-        try:
-            prices[m["ticker"]] = float(m["last_price_dollars"])
-        except (KeyError, TypeError, ValueError):
-            prices[m["ticker"]] = 0.0
+    prices = {m["ticker"]: market_price(m) for m in markets}
     total = sum(prices.values())
     if total <= 0:
         return None
     return {t: p / total for t, p in prices.items()}
 
 
-def build_race(state, race_type, event_ticker, markets):
+def build_race(state, race_type, event_ticker, markets, candidate_parties=None):
+    if candidate_parties is not None:
+        markets = [m for m in markets if market_price(m) > MINOR_CANDIDATE_THRESHOLD]
+
     normalized = normalize_outcomes(markets)
     if normalized is None:
         return None
@@ -109,17 +137,17 @@ def build_race(state, race_type, event_ticker, markets):
     dem_market = rep_market = None
     other_tickers = []
     for m in markets:
-        suffix = outcome_suffix(m["ticker"], event_ticker)
+        side = market_side(m["ticker"], event_ticker, candidate_parties)
         prob = normalized[m["ticker"]]
-        if suffix == "D":
+        if side == "D":
             dem_market = m
             dem_probability = prob
-        elif suffix == "R":
+        elif side == "R":
             rep_market = m
             rep_probability = prob
         else:
             other_tickers.append({
-                "candidate": m.get("yes_sub_title", suffix),
+                "candidate": m.get("yes_sub_title") or outcome_suffix(m["ticker"], event_ticker),
                 "affiliation": "independent",
                 "probability": prob,
             })
@@ -222,7 +250,8 @@ def build(discovery, event_map, previous):
         race_type = info["raceType"]
         markets = discovery.get(event_ticker)
 
-        race = build_race(state, race_type, event_ticker, markets) if markets else None
+        race = build_race(state, race_type, event_ticker, markets,
+                          info.get("candidateParties")) if markets else None
         if race is None:
             fallback = stale_race(state, previous_races_by_state, previous_fetched_at, event_ticker)
             failed_states.append(state)

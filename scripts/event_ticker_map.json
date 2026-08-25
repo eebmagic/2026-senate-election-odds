@@ -1,6 +1,11 @@
 {
   "_comment": "event_ticker -> { state, raceType } for the 35 contested 2026 Senate races. CONTROLS-2026 is handled separately (chamber control, not a state race) and is not listed here. SENATELA-26 is Kalshi's own mislabeling of the Kentucky race; KXSENATELA-26NOV is the real Louisiana race -- confirmed via browser DevTools, see design_handoff_senate_tracker/README.md and the historical retry script's comments.",
-  "SENATEAK-26": { "state": "AK", "raceType": "regular" },
+  "KXAKSENATE-26NOV03": {
+    "_comment": "Alaska runs a top-four nonpartisan primary + RCV general and has no party primaries at all (docs/election-processes.md), so Kalshi's party-level SENATEAK-26 market labels its two outcomes 'Democratic party' / 'Republican party' permanently -- which the pipeline's generic-name heuristic read as an unresolved primary that can never resolve. This per-candidate market names the actual finalists instead. candidateParties assigns each named candidate to a party lane; anyone at or below MINOR_CANDIDATE_THRESHOLD (see build_live_data.py) is dropped before normalization, which for 2026 leaves Peltola and Sullivan.",
+    "state": "AK",
+    "raceType": "regular",
+    "candidateParties": { "MPEL": "D", "DSUL": "R" }
+  },
   "SENATEAL-26": { "state": "AL", "raceType": "regular" },
   "SENATEAR-26": { "state": "AR", "raceType": "regular" },
   "SENATECO-26": { "state": "CO", "raceType": "regular" },
