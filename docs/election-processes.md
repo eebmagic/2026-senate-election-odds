@@ -395,20 +395,56 @@ a Kalshi link. It also creates a small maintenance surface that will go stale
 if nobody remembers it exists — the Alaska repeal initiative could invalidate
 its Alaska entry as soon as November.
 
-### Option E — Model the RCV field directly
+### Option E — Source Alaska from Kalshi's per-candidate market
 
-Show all four Alaska finalists with per-candidate probabilities.
+Read Alaska from a candidate-level market rather than the party-level one.
 
-*Not currently possible.* Kalshi publishes exactly two Alaska markets, both
-party-level (verified live above). There is no per-candidate data to render,
-and inventing one would mean sourcing Alaska from somewhere other than Kalshi
-— which breaks the single-source premise the whole pipeline rests on. Listed
-only to record that it was considered and ruled out on data availability, not
-on design grounds.
+**Correction (2026-08-25, after this section was first written):** the claim
+below that no per-candidate data exists was wrong. It rested on reading the
+`SENATEAK-26` event only. Kalshi *also* publishes
+[`KXAKSENATE-26NOV03`](https://kalshi.com/markets/kxaksenate/kxaksenate-26nov03)
+— "Who will win the Alaska Senate race?" — with one market per named
+candidate:
+
+```
+KXAKSENATE-26NOV03-MPEL  | Mary Peltola        | 0.64 | active
+KXAKSENATE-26NOV03-DSUL  | Dan Sullivan        | 0.39 | active
+KXAKSENATE-26NOV03-DJSUL | Daniel J. Sullivan  | 0.01 | active
+KXAKSENATE-26NOV03-RGRA  | Richard Grayson     | 0.00 | active
+KXAKSENATE-26NOV03-SHIL  | Sid Hill            | 0.00 | active
+KXAKSENATE-26NOV03-ADIE  | Ann Diener          | 0.00 | active
+```
+
+Only two candidates are above 5%, and they are one Democrat and one
+Republican — so this market can feed the existing two-lane display directly,
+with real names, and the pending-primary flag disappears on its own because
+"Mary Peltola" doesn't match the generic-party-name heuristic. The two
+markets agree on the party split (party-level: D 62 / R 38; candidate-level,
+renormalized over the two: D 62 / R 38), which is a useful cross-check that
+nothing is being distorted by the swap.
+
+*For:* Alaska gets true candidate names instead of placeholder-looking party
+labels, the false badge goes away as a side effect rather than as a special
+case, and it needs no schema rename and no UI change at all.
+
+*Against:* the party→candidate mapping has to be checked in (a ticker suffix
+like `MPEL` carries no affiliation), so it needs a hand edit if the field
+changes; and dropping the sub-5% candidates redistributes their ~1% across
+the two that remain.
+
+*Superseded text, kept for the record:* "*Not currently possible.* Kalshi
+publishes exactly two Alaska markets, both party-level (verified live above).
+There is no per-candidate data to render..."
 
 ---
 
 ## 5. Recommendation
+
+> **Decided 2026-08-25: Option E shipped instead.** See §6. The Option C
+> analysis below is kept because it still describes the six states where the
+> pending-primary flag is genuinely correct, and because the naming critique
+> stands on its own if the flag is ever revisited.
+
 
 **Ship Option C, and keep Option D as a follow-up if the Maine and Georgia
 gaps turn out to bother anyone.**
@@ -458,6 +494,55 @@ exists) becomes an outage rather than a fragility.
 
 ---
 
+## 6. What shipped
+
+**Option E — Alaska now reads from `KXAKSENATE-26NOV03`.**
+
+`scripts/event_ticker_map.json` points AK at the per-candidate event and
+carries the affiliation mapping the ticker suffixes don't:
+
+```json
+"KXAKSENATE-26NOV03": {
+  "state": "AK",
+  "raceType": "regular",
+  "candidateParties": { "MPEL": "D", "DSUL": "R" }
+}
+```
+
+`scripts/build_live_data.py` gained a `MINOR_CANDIDATE_THRESHOLD` of 0.05 and
+a `market_side()` helper: for an ordinary event the lane still comes from the
+`-D`/`-R` ticker suffix, and for an event with a `candidateParties` map it
+comes from that map instead, after everything at or below the threshold is
+dropped. Alaska therefore builds as:
+
+```json
+{ "state": "AK", "demCandidate": "Mary Peltola", "repCandidate": "Dan Sullivan",
+  "demProbability": 0.621, "repProbability": 0.379,
+  "demPrimaryPending": false, "repPrimaryPending": false,
+  "kalshiUrl": "https://kalshi.com/markets/kxaksenate/kxaksenate-26nov03" }
+```
+
+No UI code changed. The "?" badge, the "(primary TBD)" rows and the legend
+entry all still exist and are still correct for the six states that really do
+have an unresolved nomination (DE, MA, NH, RI, OK, SC) — Alaska simply stops
+matching them, because its candidate names are now real names.
+
+What this does *not* address, and what §2's structural list still applies to:
+
+- The RCV rounds themselves are invisible. The display shows a two-way
+  contest between the two finalists above 5%; it says nothing about the other
+  names on the ballot or about transfers deciding the outcome.
+- The four sub-5% candidates' ~1% of probability mass is redistributed across
+  Peltola and Sullivan by `normalize_outcomes()`.
+- `candidateParties` is hand-maintained. If Kalshi adds a candidate who then
+  clears 5%, they'd fall through to the `otherTickers`/"independent" lane
+  until the map is updated — visible rather than silent, but still wrong.
+- Maine and Georgia remain unmarked (Option D, still a follow-up).
+- The Nov 3 RCV repeal initiative could make §1's process description wrong
+  for 2028, though it doesn't affect the 2026 market or this wiring.
+
+---
+
 ## Sources
 
 - Alaska Division of Elections — [Ranked Choice Voting / Top Four Primary](https://www.elections.alaska.gov/ranked-choice-voting/), [RCV implementation](https://www.elections.alaska.gov/RCV.php/)
@@ -474,4 +559,4 @@ exists) becomes an outage rather than a fragility.
 - MultiState — [Runoff Elections](https://www.multistate.us/elections/runoffs-101)
 - NBC News — [South Carolina GOP Senate special primary runoff](https://www.nbcnews.com/politics/2026-election/appointed-sen-darline-graham-advances-gop-senate-primary-runoff-south-rcna591628)
 - Nebraska Secretary of State — [How nonpartisan voting works in Nebraska primary elections](https://sos.nebraska.gov/elections/how-nonpartisan-voting-works-nebraska-primary-elections)
-- Kalshi trade API, `event_ticker=SENATEAK-26`, read 2026-08-25
+- Kalshi trade API, `event_ticker=SENATEAK-26` (party-level) and `event_ticker=KXAKSENATE-26NOV03` (per-candidate), read 2026-08-25
