@@ -5,7 +5,7 @@
 // topojson-client are loaded globally via <script> tags in index.html
 // (their UMD builds), not as ES module imports.
 
-import { COLORS, buildStateSummaries, fmtPct, isMaterialIndependent, colorForDemProb, isTouchDevice, HIDE_DELAY_MS } from './senate-shared.js';
+import { COLORS, buildStateSummaries, fmtPct, isMaterialIndependent, colorForDemProb, raceAxisProb, isTouchDevice, HIDE_DELAY_MS } from './senate-shared.js';
 
 const FIPS_TO_POSTAL = {
   '01': 'AL', '02': 'AK', '04': 'AZ', '05': 'AR', '06': 'CA', '08': 'CO', '09': 'CT', '10': 'DE', '11': 'DC',
@@ -21,9 +21,14 @@ const FIPS_TO_POSTAL = {
 // seat-bar gradient (see colorForDemProb() in senate-shared.js), not a
 // solid/split/tossup classification. States with no 2026 race (both seats
 // not up) are grayed out rather than colored by their current senators.
+// raceAxisProb rather than demProbability so the map and the seat bar stay on
+// the same scale -- a race with a material independent has to land on the same
+// color in both. That means an R-led race is shaded by 1 - repProbability, so
+// Nebraska reads as the ~71%-Republican race it is rather than as a near-lock
+// (see raceAxisProb in senate-shared.js).
 function fillFor(summary) {
   if (!summary || !summary.race) return COLORS.neutral;
-  return colorForDemProb(summary.race.demProbability);
+  return colorForDemProb(raceAxisProb(summary.race));
 }
 
 function escapeHtml(s) {
