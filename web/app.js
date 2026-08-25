@@ -16,6 +16,8 @@ import {
   fmtPct,
   seatPartyResolved,
   isMaterialIndependent,
+  raceAxisProb,
+  raceLeader,
   raceHasPendingPrimary,
   isTouchDevice,
   HIDE_DELAY_MS
@@ -280,14 +282,22 @@ function buildRaceTooltip(r) {
 }
 
 function makeContestedSeg(r) {
-  const leadDem = r.demProbability >= 0.5;
+  // The cell's number/letter is the actual front-runner across all three lanes
+  // (raceLeader), and its color and its slot in the bar come from that same
+  // number mirrored onto the leader's side of the axis (raceAxisProb) -- see
+  // those two helpers in senate-shared.js. Keeping one number behind both is
+  // the point: it is why the printed percentages run in order outward from
+  // the center even in the four races where an independent holds real
+  // probability mass. The independent's share is carried by the asterisk, not
+  // folded into the leader's figure.
+  const leader = raceLeader(r);
   return {
     state: r.state,
     race: r,
     href: r.kalshiUrl,
-    color: colorForDemProb(r.demProbability),
-    leadLabel: Math.round(Math.max(r.demProbability, r.repProbability) * 100),
-    leadParty: leadDem ? 'D' : 'R',
+    color: colorForDemProb(raceAxisProb(r)),
+    leadLabel: Math.round(leader.probability * 100),
+    leadParty: leader.party,
     showIndependentMark: isMaterialIndependent(r),
     showPendingMark: raceHasPendingPrimary(r),
     tooltip: buildRaceTooltip(r)
@@ -305,7 +315,7 @@ function computeVals(data) {
   const races = data.races || [];
   const dSolids = SOLID_SEATS.filter(s => seatPartyResolved(s) === 'D').sort((a, b) => a.state.localeCompare(b.state));
   const rSolids = SOLID_SEATS.filter(s => seatPartyResolved(s) === 'R').sort((a, b) => a.state.localeCompare(b.state));
-  const contested = [...races].sort((a, b) => b.demProbability - a.demProbability);
+  const contested = [...races].sort((a, b) => raceAxisProb(b) - raceAxisProb(a));
   const segments = contested.map(makeContestedSeg);
 
   const demSolidCount = dSolids.length;

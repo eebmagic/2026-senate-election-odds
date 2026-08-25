@@ -152,6 +152,66 @@ export function isMaterialIndependent(race) {
   return !!(race.otherTickers && race.otherTickers.some(t => t.probability > 0.10));
 }
 
+// Total probability held by candidates who are neither the Democratic nor the
+// Republican nominee. Each race's outcome prices are normalized to sum to 1.0
+// (see scripts/build_live_data.py), so dem + rep + other == 1.
+export function otherProbability(race) {
+  return (race.otherTickers || []).reduce((sum, t) => sum + (t.probability || 0), 0);
+}
+
+// The candidate actually most likely to win, across all three lanes. Returns
+// { party: 'D' | 'R' | 'I', probability }. The seat bar's cell label used to
+// derive this as Math.max(demProbability, repProbability), which ignores
+// independents entirely -- an independent leading a race would still have
+// shown the runner-up major party's number and letter.
+export function raceLeader(race) {
+  const lanes = [
+    { party: 'D', probability: race.demProbability },
+    { party: 'R', probability: race.repProbability },
+    ...(race.otherTickers || []).map(t => ({ party: 'I', probability: t.probability || 0 }))
+  ];
+  return lanes.reduce((best, lane) => (lane.probability > best.probability ? lane : best));
+}
+
+// Where a race sits on the Democratic<->Republican axis that the seat bar is
+// ordered by and that both the bar and the map are colored by. 1.0 is the
+// Democratic end, 0.0 the Republican end.
+//
+// The key is the leader's own probability, mirrored onto that leader's side:
+// a D-led race sits at demProbability, an R-led race at 1 - repProbability.
+// For a straight two-way race those are the same number, so nothing about the
+// 31 two-way races changes.
+//
+// What it fixes is the three-way case. Ordering by demProbability alone
+// silently assigns an independent's entire probability mass to the Republican
+// end, which made Nebraska -- where the Republican sits at only ~71% precisely
+// because an independent is at ~29% -- render as the single safest Republican
+// seat on the board, further right than Wyoming at 98%.
+//
+// Anchoring to the leader instead keeps the bar's printed percentages in step
+// with its ordering: each cell is labeled with its leader's real probability
+// (see raceLeader), and because that same number places the cell, the labels
+// now run monotonically outward from the center on both sides. NE reads 71 R
+// and sits between IA at 59 R and KS at 80 R, exactly where 71 belongs. The
+// alternative -- positioning by demProbability + other/2 -- orders the bar
+// sensibly too, but leaves NE's printed 71 stranded between 80 and 88.
+//
+// The number is always a real candidate's odds, never a synthesized blend.
+// The independent's share is what the asterisk marks; it is not folded into
+// either party's figure.
+//
+// Edge case: if an independent is the outright favorite the leader has no side
+// to anchor to, so the race falls back to the center-weighted position. No
+// race in the 2026 map currently hits this -- Osborn leads no state -- but
+// build_race() has no fixed suffix convention for independents, so the branch
+// must exist rather than assume a D or R leader.
+export function raceAxisProb(race) {
+  const leader = raceLeader(race);
+  if (leader.party === 'D') return race.demProbability;
+  if (leader.party === 'R') return 1 - race.repProbability;
+  return race.demProbability + otherProbability(race) / 2;
+}
+
 function hexLerp(a, b, t) {
   const pa = [1, 3, 5].map(i => parseInt(a.slice(i, i + 2), 16));
   const pb = [1, 3, 5].map(i => parseInt(b.slice(i, i + 2), 16));
@@ -176,7 +236,7 @@ export function seatPartyResolved(seat) {
 }
 
 export function raceLeadParty(race) {
-  return race.demProbability >= 0.5 ? 'D' : 'R';
+  return raceLeader(race).party;
 }
 
 // One entry per state: current/likely control, for the map.
@@ -195,16 +255,22 @@ export function buildStateSummaries(races) {
     let seats, status, party;
     if (race) {
       const otherParty = seatPartyResolved(solids[0]);
-      if (isTossUp(race.demProbability)) {
+      // Both the toss-up test and the lead party read the three-lane
+      // derivations rather than demProbability directly, so a race with a
+      // material independent classifies the same way it's positioned and
+      // colored. A leading independent falls out as 'split' (it can never
+      // equal otherParty, which is always D or R) -- correct: the delegation
+      // isn't uniformly either party's.
+      const leadParty = raceLeadParty(race);
+      if (isTossUp(raceAxisProb(race))) {
         status = 'tossup';
       } else {
-        const leadParty = raceLeadParty(race);
         status = leadParty === otherParty ? 'solid' : 'split';
         party = leadParty === otherParty ? leadParty : undefined;
       }
       seats = [
         { party: otherParty, senator: solids[0].senator, isRace: false },
-        { party: race.demProbability >= 0.5 ? 'D' : 'R', isRace: true, race }
+        { party: leadParty, isRace: true, race }
       ];
     } else {
       const parties = solids.map(seatPartyResolved);
