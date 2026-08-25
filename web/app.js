@@ -19,12 +19,27 @@ import {
   raceAxisProb,
   raceLeader,
   raceHasPendingPrimary,
+  STRONG_LEAN,
   isTouchDevice,
   HIDE_DELAY_MS
 } from './senate-shared.js';
 import { renderMap } from './map.js';
 
 const CONTESTED_UNITS = 130;
+
+// Width of the whitespace break that separates the Strong D / Strong R
+// groups from the lean-and-tossup races in the middle, expressed in
+// segment-widths so it stays part of the same flex-grow budget as the
+// segments themselves. Keeping the gaps proportional (rather than a fixed
+// pixel size) is what lets every marker position below still be pure
+// percentage math -- see groupGeometry().
+const GROUP_GAP_UNITS = 0.9;
+
+// The matching break at the party handover, deliberately about half the size:
+// it separates two halves of the same lean-and-tossup middle rather than
+// cutting a group off from it, and it has the leans divider sitting in it, so
+// a full-size gap there would read as a fourth group.
+const LEAN_GAP_UNITS = 0.45;
 
 // The narrow (<720px) bar's solid dem/rep blocks are capped to a fixed pixel
 // height instead of the seat-count-proportional flex used everywhere else
@@ -297,6 +312,7 @@ function makeContestedSeg(r) {
     href: r.kalshiUrl,
     color: colorForDemProb(raceAxisProb(r)),
     leadLabel: Math.round(leader.probability * 100),
+    leadProb: leader.probability,
     leadParty: leader.party,
     showIndependentMark: isMaterialIndependent(r),
     showPendingMark: raceHasPendingPrimary(r),
@@ -309,6 +325,87 @@ function formatDate(iso) {
   const d = new Date(iso);
   if (isNaN(d)) return iso;
   return d.toLocaleString('en-US', { month: 'short', day: 'numeric' });
+}
+
+// Splits the axis-ordered segment list into its Strong D / middle / Strong R
+// groups and returns every position the bar's markers need, in "units" along
+// the contested track -- one unit per segment, GROUP_GAP_UNITS per whitespace
+// break. Both bars convert units to a percentage of their own track, so the
+// gaps, the group brackets, the leans divider and the majority line all stay
+// in agreement without either layout measuring the DOM.
+//
+// The groups are read off the ends of the list rather than filtered out of
+// it: the ordering is by raceAxisProb, so a party's strong races are always
+// a contiguous run at that party's end of the bar, and taking a prefix/suffix
+// keeps the groups unbroken even if a middling race somehow scored above the
+// threshold on the far side.
+function groupGeometry(segments) {
+  const n = segments.length;
+  const isStrong = (seg, party) => seg.leadParty === party && seg.leadProb >= STRONG_LEAN;
+
+  let strongDemCount = 0;
+  while (strongDemCount < n && isStrong(segments[strongDemCount], 'D')) strongDemCount++;
+  let strongRepCount = 0;
+  while (strongRepCount < n - strongDemCount && isStrong(segments[n - 1 - strongRepCount], 'R')) strongRepCount++;
+  const repGroupStart = n - strongRepCount;
+
+  // Where the leading party changes hands in the ordered list. Anchored on
+  // "first race not led by a Democrat" rather than a probability cutoff so it
+  // lands exactly on the handover even when an independent leads a race in
+  // between.
+  let flipIndex = 0;
+  while (flipIndex < n && segments[flipIndex].leadParty === 'D') flipIndex++;
+  const hasFlip = flipIndex > 0 && flipIndex < n;
+
+  // A break only earns its place when there are segments on *both* sides of
+  // it. The narrow bar labels its groups inside the breaks rather than in a
+  // gutter (see renderNarrowBar), so each one also carries the name of the
+  // group beside it.
+  const gapSpecs = [];
+  if (strongDemCount > 0 && strongDemCount < n) {
+    gapSpecs.push({ index: strongDemCount, units: GROUP_GAP_UNITS, above: 'Strong D', below: null });
+  }
+  if (strongRepCount > 0 && repGroupStart > 0) {
+    gapSpecs.push({ index: repGroupStart, units: GROUP_GAP_UNITS, above: null, below: 'Strong R' });
+  }
+  if (hasFlip) {
+    gapSpecs.push({ index: flipIndex, units: LEAN_GAP_UNITS, above: null, below: null });
+  }
+
+  // Boundaries can coincide -- the handover falls on a strong-group edge when
+  // one party's leaned races are all strong, and the two strong edges meet
+  // when there is no middle at all. Collapse those onto one break, widest
+  // spec winning, carrying whatever labels the merged specs had.
+  const gaps = [];
+  for (const spec of gapSpecs) {
+    const existing = gaps.find(g => g.index === spec.index);
+    if (!existing) {
+      gaps.push({ ...spec });
+      continue;
+    }
+    existing.units = Math.max(existing.units, spec.units);
+    existing.above = existing.above || spec.above;
+    existing.below = existing.below || spec.below;
+  }
+  gaps.sort((a, b) => a.index - b.index);
+
+  const totalUnits = n + gaps.reduce((sum, g) => sum + g.units, 0);
+  // Units to the left of segment i's leading edge. A gap declared at index i
+  // sits immediately before that segment, so it counts toward i's own edge.
+  const edgeUnits = i => i + gaps.filter(g => g.index <= i).reduce((sum, g) => sum + g.units, 0);
+
+  // The leans divider is centered *in* its break rather than pinned to one
+  // side, so it doesn't read as belonging to the segment next to it.
+  const flipGap = hasFlip ? gaps.find(g => g.index === flipIndex) : null;
+
+  return {
+    gaps,
+    totalUnits,
+    edgeUnits,
+    strongDem: strongDemCount > 0 ? { startUnits: 0, endUnits: strongDemCount } : null,
+    strongRep: strongRepCount > 0 ? { startUnits: edgeUnits(repGroupStart), endUnits: totalUnits } : null,
+    flipUnits: flipGap ? edgeUnits(flipIndex) - flipGap.units / 2 : null
+  };
 }
 
 function computeVals(data) {
@@ -325,15 +422,32 @@ function computeVals(data) {
   const repSolidLabelPos = 100 - (repSolidCount / totalUnits / 2) * 100;
   const demBlockPct = (demSolidCount / totalUnits) * 100;
   const contestedPct = (CONTESTED_UNITS / totalUnits) * 100;
-  const seatsIntoContested = 50 - demSolidCount;
-  const majorityLinePos = demBlockPct + (seatsIntoContested / contested.length) * contestedPct;
+  const geom = groupGeometry(segments);
+  // Unit -> percentage converters, one per layout. Everything the bar marks
+  // (gaps, group brackets, the leans divider, the majority line) is placed
+  // through these, so all of them shift together when the groups change.
+  const widePct = u => demBlockPct + (u / geom.totalUnits) * contestedPct;
 
-  // Narrow-bar-specific line position: the solid blocks there render at a
-  // fixed NARROW_SOLID_BLOCK_HEIGHT (not seat-count-proportional -- see the
-  // constant's comment), so the fraction-of-total used by majorityLinePos
-  // above doesn't line up with where the segments actually fall on screen.
+  // Narrow-bar-specific conversion: the solid blocks there render at a fixed
+  // NARROW_SOLID_BLOCK_HEIGHT (not seat-count-proportional -- see the
+  // constant's comment), so the fraction-of-total the wide bar uses doesn't
+  // line up with where the segments actually fall on screen.
   const narrowContestedHeight = NARROW_TRACK_HEIGHT - 2 * NARROW_SOLID_BLOCK_HEIGHT;
-  const majorityLinePosNarrow = ((NARROW_SOLID_BLOCK_HEIGHT + (seatsIntoContested / contested.length) * narrowContestedHeight) / NARROW_TRACK_HEIGHT) * 100;
+  const narrowPct = u => ((NARROW_SOLID_BLOCK_HEIGHT + (u / geom.totalUnits) * narrowContestedHeight) / NARROW_TRACK_HEIGHT) * 100;
+
+  const seatsIntoContested = 50 - demSolidCount;
+  const majorityLinePos = widePct(geom.edgeUnits(seatsIntoContested));
+  const majorityLinePosNarrow = narrowPct(geom.edgeUnits(seatsIntoContested));
+
+  // Wide brackets are laid out as left+width; narrow ones as top+height.
+  const wideGroup = g => g && { pos: widePct(g.startUnits), size: widePct(g.endUnits) - widePct(g.startUnits) };
+  const narrowGroup = g => g && { pos: narrowPct(g.startUnits), size: narrowPct(g.endUnits) - narrowPct(g.startUnits) };
+  const strongGroups = [
+    { key: 'dem', label: 'Strong D', wide: wideGroup(geom.strongDem), narrow: narrowGroup(geom.strongDem) },
+    { key: 'rep', label: 'Strong R', wide: wideGroup(geom.strongRep), narrow: narrowGroup(geom.strongRep) }
+  ].filter(g => g.wide);
+  const leanPos = geom.flipUnits === null ? null : widePct(geom.flipUnits);
+  const leanPosNarrow = geom.flipUnits === null ? null : narrowPct(geom.flipUnits);
 
   // scrollable: true marks the long-list tooltip variant (see .tooltip.scrollable
   // in index.html + wireTooltip in this file) so the full 30+ name list is
@@ -353,6 +467,8 @@ function computeVals(data) {
 
   return {
     races, segments, demSolidCount, repSolidCount,
+    gaps: geom.gaps.map(g => ({ ...g, flex: g.units + ' 1 0%' })),
+    strongGroups, leanPos, leanPosNarrow,
     demSolidLabelPos, repSolidLabelPos, majorityLinePos, majorityLinePosNarrow,
     demBlockFlex: demSolidCount + ' 1 0%',
     repBlockFlex: repSolidCount + ' 1 0%',
@@ -391,6 +507,49 @@ function segHtmlNarrow(seg, i) {
     </a>`;
 }
 
+// Interleaves the whitespace breaks into the ordered segment list. Each gap's
+// flex-grow comes from its own unit width so it stays exactly the size
+// groupGeometry() assumed when it placed every marker.
+function segsWithGaps(vals, segHtml, gapHtml) {
+  return vals.segments
+    .map((seg, i) => {
+      const gap = vals.gaps.find(g => g.index === i);
+      return (gap ? gapHtml(gap) : '') + segHtml(seg, i);
+    })
+    .join('');
+}
+
+function gapHtmlWide(gap) {
+  return `<div class="seg-gap-wide" style="flex:${gap.flex};"></div>`;
+}
+
+// Unlike the wide bar -- which has room for labelled brackets in a band under
+// the track -- the narrow bar has no horizontal gutter to spare, so it names
+// each group inside the break itself, with an arrow pointing at the group
+// being named.
+function gapHtmlNarrow(gap) {
+  const above = gap.above ? `<span class="gap-label dem">${gap.above} &#9650;</span>` : '';
+  const below = gap.below ? `<span class="gap-label rep">&#9660; ${gap.below}</span>` : '';
+  return `<div class="seg-gap-narrow" style="flex:${gap.flex};">${above}${below}</div>`;
+}
+
+// The band beneath the wide bar: a bracket spanning each strong group, plus
+// the smaller leans divider at the point where the lead changes party.
+function leanBandWideHtml(vals) {
+  const brackets = vals.strongGroups.map(g => `
+      <div class="strong-group ${g.key}" style="left:${g.wide.pos}%; width:${g.wide.size}%;">
+        <div class="strong-bracket"></div>
+        <div class="strong-label">${g.label}</div>
+      </div>`).join('');
+  const lean = vals.leanPos === null ? '' : `
+      <div class="lean-mark" style="left:${vals.leanPos}%;">
+        <span class="lean-tick"></span>
+        <span class="lean-label lean-d">&#9664; Leans D</span>
+        <span class="lean-label lean-r">Leans R &#9654;</span>
+      </div>`;
+  return `<div class="lean-band-wide">${brackets}${lean}</div>`;
+}
+
 function renderGauge(vals) {
   const demEl = document.getElementById('gauge-dem');
   const repEl = document.getElementById('gauge-rep');
@@ -420,13 +579,14 @@ function renderWideBar(vals) {
       <div class="bar-wide">
         <div class="solid-block dem" style="flex:${vals.demBlockFlex};" data-tip="dem-solid"></div>
         <div class="contested-wrap-wide" style="flex:${vals.contestedWrapFlex};">
-          ${vals.segments.map(segHtmlWide).join('')}
+          ${segsWithGaps(vals, segHtmlWide, gapHtmlWide)}
         </div>
         <div class="solid-block rep" style="flex:${vals.repBlockFlex};" data-tip="rep-solid"></div>
       </div>
       <div class="majority-line-wide" style="left:${vals.majorityLinePos}%;"></div>
       <div class="tooltip" id="tooltip-wide"></div>
-    </div>`;
+    </div>
+    ${leanBandWideHtml(vals)}`;
 
   const barEl = document.getElementById('bar-wide');
   const tooltipEl = document.getElementById('tooltip-wide');
@@ -450,12 +610,18 @@ function renderNarrowBar(vals) {
           <div class="bar-narrow">
             <div class="solid-block-narrow dem" style="flex:${vals.demBlockFlex};" data-tip="dem-solid"></div>
             <div class="contested-wrap-narrow" style="flex:${vals.contestedWrapFlex};">
-              ${vals.segments.map(segHtmlNarrow).join('')}
+              ${segsWithGaps(vals, segHtmlNarrow, gapHtmlNarrow)}
             </div>
             <div class="solid-block-narrow rep" style="flex:${vals.repBlockFlex};" data-tip="rep-solid"></div>
           </div>
           <div class="majority-line-narrow" style="top:${vals.majorityLinePosNarrow}%;"></div>
           <div class="majority-label-narrow" style="top:${vals.majorityLinePosNarrow}%;">50 seats</div>
+          ${vals.leanPosNarrow === null ? '' : `
+          <div class="lean-line-narrow" style="top:${vals.leanPosNarrow}%;"></div>
+          <div class="lean-labels-narrow" style="top:${vals.leanPosNarrow}%;">
+            <span class="lean-label lean-d">Leans D &#9650;</span>
+            <span class="lean-label lean-r">&#9660; Leans R</span>
+          </div>`}
         </div>
         <div class="solid-caption rep">${vals.repSolidCount} R seats not up</div>
         <div class="tooltip" id="tooltip-narrow"></div>

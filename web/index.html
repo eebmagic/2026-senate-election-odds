@@ -85,10 +85,45 @@
      special-election marker style (see .special-mark). */
   .pending-mark-h { position: absolute; bottom: 4px; left: 50%; transform: translateX(-50%); }
   .majority-line-wide { position: absolute; top: 12px; bottom: -8px; width: 2px; background: #211f1c; transform: translateX(-1px); pointer-events: none; }
+  /* Whitespace break separating each Strong D/R group from the lean-and-tossup
+     races. It's a flex sibling of the segments (grow set inline from
+     GROUP_GAP_UNITS in app.js) rather than a margin, so the group brackets and
+     the leans divider below can be positioned with the same unit math the
+     segments themselves are laid out with. Painted page-colored rather than
+     left transparent because .bar-wide is a rounded, overflow-hidden box that
+     may pick up a background of its own later. */
+  .seg-gap-wide { height: 100%; background: #faf8f4; }
+  /* Marker band under the wide bar. margin-top clears the 8px stub the
+     majority line drops below the bar, so the two never overlap even when the
+     leans divider lands a segment or two away from the 50-seat line. */
+  .lean-band-wide { position: relative; width: 100%; height: 30px; margin-top: 10px; }
+  .strong-group { position: absolute; top: 0; }
+  .strong-group.dem { color: #1c3f7a; }
+  .strong-group.rep { color: #8a2a22; }
+  /* Open-bottomed bracket: it reads as pointing up at the run of segments it
+     spans. currentColor keeps it in step with the party color on .strong-group. */
+  .strong-bracket { height: 6px; border: 2px solid currentColor; border-bottom: none; border-radius: 2px 2px 0 0; box-sizing: border-box; }
+  .strong-label { margin-top: 3px; text-align: center; font-size: 11px; font-weight: 700; white-space: nowrap; }
+  /* The leans divider is deliberately quieter than .majority-line-wide -- 1px,
+     ink-soft, and confined to the band instead of crossing the bar -- because
+     the two can land within a couple of segments of each other and the 50-seat
+     line is the more important of the two. */
+  .lean-mark { position: absolute; top: -10px; width: 1px; transform: translateX(-0.5px); }
+  /* Tall enough to close the band's 10px margin and meet the bottom edge of
+     the bar -- a tick floating in the whitespace reads as a stray artifact
+     rather than a divider at a specific point in the ordering. */
+  .lean-tick { display: block; width: 1px; height: 20px; background: #5b574f; }
+  .lean-label { position: absolute; top: 22px; font-size: 10px; font-weight: 700; color: #5b574f; white-space: nowrap; }
+  .lean-label.lean-d { right: 5px; }
+  .lean-label.lean-r { left: 5px; }
 
   .bar-wrap-narrow { display: none; justify-content: center; padding-right: 78px; box-sizing: border-box; }
   @media (max-width: 719px) {
     .bar-wrap-wide { display: none; }
+    /* The marker band is a sibling of .bar-wrap-wide rather than a child (it
+       has to sit clear of the majority line's stub), so it needs its own half
+       of the wide/narrow swap. */
+    .lean-band-wide { display: none; }
     .bar-wrap-narrow { display: flex; }
     /* The not-up blocks get their height from an inline flex-grow proportional
        to seat count (see app.js), which works for the wide bar because its
@@ -128,6 +163,25 @@
   .pending-mark-v { position: absolute; top: 50%; right: 4px; transform: translateY(-50%); }
   .majority-line-narrow { position: absolute; left: -8px; right: -8px; height: 2px; background: #211f1c; transform: translateY(-1px); pointer-events: none; }
   .majority-label-narrow { position: absolute; right: -8px; transform: translate(100%, -50%); font-size: 10px; font-weight: 700; color: #211f1c; white-space: nowrap; pointer-events: none; padding-left: 4px; }
+  /* Narrow counterpart of .seg-gap-wide. The stacked layout has no horizontal
+     gutter to spare on the left (the right one is already carrying the
+     "50 seats" label), so the group names ride inside the break itself. */
+  .seg-gap-narrow { width: 100%; background: #faf8f4; display: flex; align-items: center; justify-content: center; gap: 12px; }
+  .gap-label { font-size: 9px; font-weight: 700; letter-spacing: 0.02em; white-space: nowrap; }
+  .gap-label.dem { color: #1c3f7a; }
+  .gap-label.rep { color: #8a2a22; }
+  /* Unlike .majority-line-narrow this stops at the bar's edge instead of
+     crossing it: at 1px it would be lost among the cream segment borders, and
+     darkening it enough to read over the segment fills would make the quieter
+     of the two dividers the louder one. A stub out into the gutter, joining
+     the bar to its labels, is the vertical equivalent of the wide bar's tick
+     sitting below the track. */
+  .lean-line-narrow { position: absolute; left: 100%; width: 8px; height: 1px; background: #5b574f; pointer-events: none; }
+  /* Shares the right gutter with the "50 seats" label. The two lines sit at
+     least a segment apart vertically and these labels are stacked clear of the
+     divider itself, so they don't collide. */
+  .lean-labels-narrow { position: absolute; left: calc(100% + 11px); transform: translateY(-50%); display: flex; flex-direction: column; gap: 3px; pointer-events: none; }
+  .lean-labels-narrow .lean-label { position: static; }
 
   .legend { display: flex; gap: 22px; flex-wrap: wrap; margin-top: 14px; font-size: 12px; color: #5b574f; }
   .legend-item { display: flex; align-items: center; gap: 6px; }
