@@ -1,10 +1,3 @@
-// Inlined port of design_handoff_senate_tracker/us-map.html: same FIPS->postal
-// table, stripe pattern, and tooltip content, reading the vendored topology
-// instead of hitting a CDN, and consuming state summaries built from the
-// live races array instead of data.js's static RACES export. d3 and
-// topojson-client are loaded globally via <script> tags in index.html
-// (their UMD builds), not as ES module imports.
-
 import { COLORS, buildStateSummaries, fmtPct, isMaterialIndependent, colorForDemProb, raceAxisProb, isTouchDevice, HIDE_DELAY_MS } from './senate-shared.js';
 
 const FIPS_TO_POSTAL = {
