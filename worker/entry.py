@@ -17,7 +17,8 @@ Handlers:
                POST /api/refresh     authed; runs the cron job on demand --
                                      the only sane way to test a deploy without
                                      waiting up to 12 hours
-               GET  /health          last run's outcome, promoted or not
+               GET  /health          run state: running / done / error, plus
+                                     lastRefresh and the previous run's outcome
 
 PROMOTION mirrors script.py exactly: every run's result is recorded, but the
 key the UI reads is only repointed if at most FAILURE_RATE_ALERT_THRESHOLD of
@@ -32,6 +33,7 @@ import hmac
 import json
 import random
 import traceback
+from datetime import datetime, timezone
 
 from js import fetch as js_fetch, AbortSignal, Object, URL
 from pyodide.ffi import to_js
@@ -49,6 +51,29 @@ CONTROLS_EVENT_TICKER = "CONTROLS-2026"
 # KV keys. LIVE_KEY is the only one the UI reads.
 LIVE_KEY = "live-senate-data"
 LAST_RUN_KEY = "last-run"
+
+# LAST_RUN_KEY's "state" field, served by /health. Written once when a run
+# starts and again when it settles, so a refresh is observable while it is
+# still going rather than only after it finishes (~40-60s).
+#
+# Advisory only, NOT a lock: KV is eventually consistent, so two overlapping
+# runs can both read "done" and both proceed. It also cannot self-clear if the
+# isolate is killed outright (rather than raising), so a "running" record whose
+# startedAt is far in the past means an abandoned run, not a live one.
+STATE_RUNNING = "running"
+STATE_DONE = "done"
+STATE_ERROR = "error"
+
+TIMESTAMP_FORMAT = "%Y-%m-%dT%H:%M:%SZ"
+
+# How often the in-flight run republishes its progress to LAST_RUN_KEY. The
+# dashboard's log only appears once a request finishes, so during a 40-60s run
+# polling /health is the only way to see whether it is advancing or wedged --
+# a bare "running" flag can't distinguish those.
+#
+# Kept coarse on purpose: KV allows 1 write/sec to a single key, and at the
+# default 1s inter-ticker delay this lands a write roughly every 5s.
+PROGRESS_EVERY_N_TICKERS = 5
 
 MAX_RETRIES = 5
 INITIAL_BACKOFF_SECONDS = 3
@@ -132,17 +157,24 @@ async def fetch_event_markets(event_ticker, max_retries=MAX_RETRIES):
     return [], last_error or "unknown error"
 
 
-async def fetch_all(event_tickers, delay_seconds):
+async def fetch_all(event_tickers, delay_seconds, on_progress=None):
     """Returns (discovery, failures). discovery has an entry for EVERY ticker
-    (empty list on failure) -- build() depends on that shape."""
+    (empty list on failure) -- build() depends on that shape.
+
+    on_progress, if given, is awaited every PROGRESS_EVERY_N_TICKERS tickers
+    (and once at the end) as on_progress(done, total, failures).
+    """
     discovery = {}
     failures = {}
+    total = len(event_tickers)
     for i, event_ticker in enumerate(event_tickers, 1):
         markets, error = await fetch_event_markets(event_ticker)
         if error:
             failures[event_ticker] = error
         discovery[event_ticker] = markets
-        if i < len(event_tickers) and delay_seconds > 0:
+        if on_progress and (i % PROGRESS_EVERY_N_TICKERS == 0 or i == total):
+            await on_progress(i, total, failures)
+        if i < total and delay_seconds > 0:
             await asyncio.sleep(delay_seconds)
     return discovery, failures
 
@@ -161,27 +193,95 @@ async def kv_put_json(kv, key, payload):
     await kv.put(key, json.dumps(payload, indent=2) + "\n")
 
 
-async def run_refresh(env):
+def _now_iso():
+    return datetime.now(timezone.utc).strftime(TIMESTAMP_FORMAT)
+
+
+def _elapsed_seconds(started_iso, finished_iso):
+    try:
+        started = datetime.strptime(started_iso, TIMESTAMP_FORMAT)
+        finished = datetime.strptime(finished_iso, TIMESTAMP_FORMAT)
+    except (TypeError, ValueError):
+        return None
+    return round((finished - started).total_seconds(), 1)
+
+
+async def run_refresh(env, trigger="cron"):
     """One full pipeline run. Returns the last-run record (also persisted to
     LAST_RUN_KEY), so the cron path and the manual /api/refresh path can't
-    drift apart."""
+    drift apart.
+
+    LAST_RUN_KEY is written twice: STATE_RUNNING before the ~40-60s of Kalshi
+    fetching begins, then STATE_DONE (or STATE_ERROR) once it settles. Both
+    carry lastRefresh -- the last time a run actually completed -- so polling
+    /health mid-run still tells you how current the data is.
+    """
     kv = env.SENATE_DATA
     delay = _env_float(env, "FETCH_DELAY_MS", DEFAULT_DELAY_BETWEEN_REQUESTS_SECONDS * 1000) / 1000.0
 
+    started_at = _now_iso()
+    # Carried through every state below, so a running or failed run never
+    # erases when the data was last actually refreshed.
+    previous_record = await kv_get_json(kv, LAST_RUN_KEY) or {}
+    last_refresh = previous_record.get("lastRefresh")
+
+    def running_record(fetched=0, total=None, failed=0):
+        return {
+            "state": STATE_RUNNING,
+            "trigger": trigger,
+            "startedAt": started_at,
+            "lastRefresh": last_refresh,
+            "progress": {
+                "tickersFetched": fetched,
+                "tickersTotal": total,
+                "tickersFailed": failed,
+                "updatedAt": _now_iso(),
+            },
+        }
+
     event_tickers = sorted(EVENT_MAP.keys()) + [CONTROLS_EVENT_TICKER]
-    discovery, failures = await fetch_all(event_tickers, delay)
+    await kv_put_json(kv, LAST_RUN_KEY, running_record(total=len(event_tickers)))
 
-    failure_rate = len(failures) / len(event_tickers)
-    healthy = failure_rate <= FAILURE_RATE_ALERT_THRESHOLD
+    async def report_progress(done, total, failures_so_far):
+        await kv_put_json(
+            kv, LAST_RUN_KEY, running_record(done, total, len(failures_so_far)))
 
-    # The currently-promoted blob feeds build()'s stale-carryforward logic.
-    previous = await kv_get_json(kv, LIVE_KEY)
-    output = build(discovery, EVENT_MAP, previous)
+    try:
+        discovery, failures = await fetch_all(event_tickers, delay, report_progress)
 
-    if healthy:
-        await kv_put_json(kv, LIVE_KEY, output)
+        failure_rate = len(failures) / len(event_tickers)
+        healthy = failure_rate <= FAILURE_RATE_ALERT_THRESHOLD
 
+        # The currently-promoted blob feeds build()'s stale-carryforward logic.
+        previous = await kv_get_json(kv, LIVE_KEY)
+        output = build(discovery, EVENT_MAP, previous)
+
+        if healthy:
+            await kv_put_json(kv, LIVE_KEY, output)
+    except Exception as e:
+        finished_at = _now_iso()
+        await kv_put_json(kv, LAST_RUN_KEY, {
+            "state": STATE_ERROR,
+            "trigger": trigger,
+            "startedAt": started_at,
+            "finishedAt": finished_at,
+            "durationSeconds": _elapsed_seconds(started_at, finished_at),
+            "error": f"{type(e).__name__}: {e}",
+            # Still the last time data actually landed -- this run changed nothing.
+            "lastRefresh": last_refresh,
+        })
+        raise
+
+    finished_at = _now_iso()
     record = {
+        "state": STATE_DONE,
+        "trigger": trigger,
+        "startedAt": started_at,
+        "finishedAt": finished_at,
+        "durationSeconds": _elapsed_seconds(started_at, finished_at),
+        # Only advances when this run actually replaced the live blob; an
+        # unpromoted run leaves it pointing at the last good refresh.
+        "lastRefresh": finished_at if healthy else last_refresh,
         "ranAt": output["fetchedAt"],
         "promoted": healthy,
         "tickersTotal": len(event_tickers),
@@ -240,7 +340,7 @@ def _authorized(request, env):
 class Default(WorkerEntrypoint):
     async def scheduled(self, controller, env, ctx):
         try:
-            record = await run_refresh(env)
+            record = await run_refresh(env, trigger="cron")
         except Exception:
             # Without this the dashboard shows only "exception", not what broke.
             print(traceback.format_exc())
@@ -305,7 +405,7 @@ class Default(WorkerEntrypoint):
                 return _json_response(env, {"error": "method not allowed"}, status=405)
             if not _authorized(request, env):
                 return _json_response(env, {"error": "unauthorized"}, status=401)
-            return _json_response(env, await run_refresh(env))
+            return _json_response(env, await run_refresh(env, trigger="manual"))
 
         if path == "/health":
             record = await kv_get_json(env.SENATE_DATA, LAST_RUN_KEY)

@@ -92,8 +92,45 @@ curl -s "$BASE/api/live-data" | head -30
 curl -s "$BASE/health"
 ```
 
-A healthy `/health` looks like `"promoted": true`, `"races": 35`,
-`"tickersFailed": 0`.
+### Watching a run while it happens
+
+The dashboard's observability log only writes a line once a request *finishes*,
+so during the 40-60s refresh it shows nothing and you can't tell "working" from
+"wedged". The worker therefore publishes its own state into KV as it goes.
+Poll `/health` from a second terminal:
+
+```bash
+while true; do curl -s "$BASE/health" | python3 -m json.tool; sleep 3; done
+```
+
+Mid-run you'll see the ticker count climbing:
+
+```json
+{
+  "state": "running",
+  "trigger": "manual",
+  "startedAt": "2026-08-26T03:00:00Z",
+  "lastRefresh": "2026-08-25T12:00:04Z",
+  "progress": { "tickersFetched": 15, "tickersTotal": 36, "tickersFailed": 0,
+                "updatedAt": "2026-08-26T03:00:21Z" }
+}
+```
+
+and on completion `"state": "done"` with `"promoted": true`, `"races": 35`,
+`"tickersFailed": 0`, a `durationSeconds`, and `lastRefresh` advanced to this
+run. A crash settles it to `"state": "error"` with the exception.
+
+`lastRefresh` only advances when a run actually replaced the live blob, so a
+`running` or `error` record still tells you truthfully how old the data is.
+
+Two caveats. It is **advisory, not a lock** — KV is eventually consistent, so
+overlapping runs can both see `done` and both proceed. And it cannot clear
+itself if the isolate is killed outright rather than raising, so a `running`
+record with a long-stale `startedAt` is an abandoned run, not a live one.
+
+For genuinely live logs (including the worker's `print()` output and
+tracebacks) use `npx wrangler tail senate-election-data` instead, which streams
+rather than waiting for the request to finish.
 
 You can also seed KV from your machine instead of letting the worker fetch:
 

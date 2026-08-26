@@ -89,9 +89,13 @@ sys.modules["workers"] = workers
 
 # ---- fake KV / env --------------------------------------------------------
 class FakeKV:
-    def __init__(self): self.store = {}
+    def __init__(self): self.store = {}; self.history = []
     async def get(self, k): return self.store.get(k)
-    async def put(self, k, v): self.store[k] = v
+    async def put(self, k, v):
+        self.store[k] = v
+        self.history.append((k, v))
+    def writes_to(self, key):
+        return [json.loads(v) for k, v in self.history if k == key]
 
 class Env:
     INGEST_TOKEN = "test-token"
@@ -135,6 +139,24 @@ async def main():
     if abs(c["demProbability"] + c["repProbability"] - 1.0) > 1e-9:
         ok = False; print("  !! FAIL: controls not normalized")
 
+    # Run-state marker: /health must show progress DURING the run, not just after.
+    runs = kv.writes_to(mod.LAST_RUN_KEY)
+    states = [r["state"] for r in runs]
+    fetched = [r["progress"]["tickersFetched"] for r in runs if r["state"] == "running"]
+    print(f"\n[run state] {len(runs)} writes: {states[0]} -> ... -> {states[-1]}")
+    print(f"  progress ticks: {fetched}")
+    if states[0] != "running" or states[-1] != "done":
+        ok = False; print("  !! FAIL: expected running -> done")
+    if fetched != sorted(fetched) or fetched[-1] != 36:
+        ok = False; print("  !! FAIL: progress should climb monotonically to 36")
+    if runs[0]["progress"]["tickersTotal"] != 36:
+        ok = False; print("  !! FAIL: total should be known from the first write")
+    done = runs[-1]
+    print(f"  done: lastRefresh={done['lastRefresh']} duration={done['durationSeconds']}s "
+          f"trigger={done['trigger']}")
+    if not done.get("lastRefresh") or done["trigger"] != "cron":
+        ok = False; print("  !! FAIL: done record missing lastRefresh/trigger")
+
     good = kv.store[mod.LIVE_KEY]
     FAIL_TICKERS.update(sorted(EVENT_MAP_RAW)[:20])
     r2 = await mod.run_refresh(env)
@@ -143,6 +165,12 @@ async def main():
         ok = False; print("  !! FAIL: bad run must not clobber live data")
     else:
         print("  live key preserved")
+    if r2["lastRefresh"] != done["lastRefresh"]:
+        ok = False; print("  !! FAIL: unpromoted run must not advance lastRefresh")
+    else:
+        print(f"  lastRefresh held at {r2['lastRefresh']} (data really is that old)")
+    if r2["state"] != "done":
+        ok = False; print("  !! FAIL: an unpromoted run still settles to done")
 
     FAIL_TICKERS.clear(); FAIL_TICKERS.update(sorted(EVENT_MAP_RAW)[:3])
     r3 = await mod.run_refresh(env)
