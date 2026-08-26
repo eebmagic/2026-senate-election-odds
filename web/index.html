@@ -4,6 +4,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>2026 U.S. Senate Races</title>
+<!-- Relative hrefs: the site is served from a GitHub Pages project subpath
+     (/2026-senate-election-odds/), so root-absolute "/favicon.svg" would 404. -->
+<link rel="icon" href="favicon/favicon.svg" type="image/svg+xml">
+<link rel="icon" href="favicon/favicon-32.png" sizes="32x32" type="image/png">
+<link rel="icon" href="favicon/favicon-16.png" sizes="16x16" type="image/png">
+<link rel="apple-touch-icon" href="favicon/apple-touch-icon.png">
 <style>
   body { margin: 0; background: #faf8f4; font-family: Helvetica, Arial, sans-serif; color: #211f1c; }
   a { color: #2f5aa8; }
@@ -11,6 +17,8 @@
   #page { max-width: 1180px; margin: 0 auto; padding: 48px 32px 80px; }
 
   .header { display: flex; justify-content: space-between; align-items: flex-end; gap: 24px; flex-wrap: wrap; margin-bottom: 32px; border-bottom: 1px solid #e2ded5; padding-bottom: 20px; }
+  .title-group { display: flex; align-items: center; gap: 14px; }
+  .site-logo { flex: none; border-radius: 6px; }
   .eyebrow { font-size: 13px; letter-spacing: 0.06em; text-transform: uppercase; color: #5b574f; font-weight: 600; margin-bottom: 6px; }
   h1 { font-size: 34px; margin: 0; font-weight: 700; }
   .meta { text-align: right; font-size: 12.5px; color: #5b574f; font-family: ui-monospace, monospace; }
@@ -293,9 +301,12 @@
 <div id="page">
 
   <div class="header">
-    <div>
-      <div class="eyebrow">2026 Election Cycle</div>
-      <h1>U.S. Senate Races</h1>
+    <div class="title-group">
+      <img class="site-logo" src="favicon/favicon.svg" alt="" width="56" height="56">
+      <div>
+        <div class="eyebrow">2026 Election Cycle</div>
+        <h1>U.S. Senate Races</h1>
+      </div>
     </div>
     <div class="meta">
       <div>Kalshi prediction-market odds</div>
