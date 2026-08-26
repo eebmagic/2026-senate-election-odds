@@ -544,8 +544,14 @@ function leanBandWideHtml(vals) {
   const lean = vals.leanPos === null ? '' : `
       <div class="lean-mark" style="left:${vals.leanPos}%;">
         <span class="lean-tick"></span>
-        <span class="lean-label lean-d">&#9664; Leans D</span>
-        <span class="lean-label lean-r">Leans R &#9654;</span>
+        <!-- U+25C4/U+25BA (pointers), not the U+25C0/U+25B6 triangles: that
+             pair resolves to two different fallback fonts here, giving the two
+             labels line boxes of different heights (15px vs 12px) and so
+             visibly different baselines despite a shared top offset. These two
+             share the label font's own metrics -- same as the narrow layout's
+             U+25B2/U+25BC -- so the two labels line up. -->
+        <span class="lean-label lean-d">&#9668; Leans D</span>
+        <span class="lean-label lean-r">Leans R &#9658;</span>
       </div>`;
   return `<div class="lean-band-wide">${brackets}${lean}</div>`;
 }
