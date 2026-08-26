@@ -83,12 +83,25 @@ senate-election-map-kanban
 
 ## Running & verifying locally
 
-`cd web && python3 -m http.server` (or similar — no build step). Verify UI
-changes live via the claude-in-chrome browser tools (screenshot/zoom/hover),
-not just by reading the diff. If the extension isn't connected
+`cd web && python3 -m http.server` (or similar). Verify UI changes live via
+the claude-in-chrome browser tools (screenshot/zoom/hover), not just by
+reading the diff. If the extension isn't connected
 (`list_connected_browsers` returns `[]`), that's an environment issue for the
 user to fix, not a reason to skip verification — mark the item ⚠️ with that
 reason rather than claiming success from code review alone.
+
+**Build step for `app.js`/`map.js`/`index.html`:** these three ship from
+`web/` minified (a 14KB-per-file budget is enforced by
+`scripts/check_bundle_size.py`, excluding `web/vendor/`) but are edited as
+readable source in `web-src/`. After changing any of the three, regenerate
+the deployed copy with `python3 scripts/build_web.py` (requires Node/npx —
+it shells out to `npx esbuild` for the JS files; `--check` diffs the current
+`web/` output against a fresh build without writing, for catching a
+forgotten rebuild) and commit both the `web-src/` source and the rebuilt
+`web/` file together — never hand-edit the `web/` copies of these three
+directly, edits there get silently blown away by the next rebuild.
+`senate-shared.js` and everything else in `web/` is edited in place as
+usual, no build step.
 
 **Known gotcha — stale ES module cache:** after editing a `.js` file, the
 browser sometimes keeps serving a cached module and throws a stale

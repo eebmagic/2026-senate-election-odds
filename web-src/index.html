@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>2026 U.S. Senate Races</title>
+<!-- Relative hrefs: the site is served from a GitHub Pages project subpath
+     (/2026-senate-election-odds/), so root-absolute "/favicon.svg" would 404. -->
+<link rel="icon" href="favicon/favicon.svg" type="image/svg+xml">
+<link rel="icon" href="favicon/favicon-32.png" sizes="32x32" type="image/png">
+<link rel="icon" href="favicon/favicon-16.png" sizes="16x16" type="image/png">
+<link rel="apple-touch-icon" href="favicon/apple-touch-icon.png">
+<style>
+  body { margin: 0; background: #faf8f4; font-family: Helvetica, Arial, sans-serif; color: #211f1c; }
+  a { color: #2f5aa8; }
+  a:hover { color: #1c3f7a; }
+  #page { max-width: 1180px; margin: 0 auto; padding: 48px 32px 80px; }
+
+  .header { display: flex; justify-content: space-between; align-items: flex-end; gap: 24px; flex-wrap: wrap; margin-bottom: 32px; border-bottom: 1px solid #e2ded5; padding-bottom: 20px; }
+  .title-group { display: flex; align-items: center; gap: 14px; }
+  .site-logo { flex: none; border-radius: 6px; }
+  .eyebrow { font-size: 13px; letter-spacing: 0.06em; text-transform: uppercase; color: #5b574f; font-weight: 600; margin-bottom: 6px; }
+  h1 { font-size: 34px; margin: 0; font-weight: 700; }
+  .meta { text-align: right; font-size: 12.5px; color: #5b574f; font-family: ui-monospace, monospace; }
+  .meta .stale { color: #8a2a22; }
+
+  #status { padding: 40px 0; color: #5b574f; font-size: 14px; }
+  #status.error { color: #8a2a22; }
+  #app { display: none; }
+
+  .section-heading { font-size: 15px; font-weight: 700; }
+  .caption { font-size: 12px; color: #5b574f; }
+
+  /* Chamber control gauge */
+  .gauge-section { margin-bottom: 44px; }
+  .gauge-wrap { position: relative; height: 60px; width: 100%; margin-top: 8px; }
+  .gauge-bar { position: relative; height: 60px; width: 100%; border-radius: 6px; overflow: hidden; display: flex; box-shadow: inset 0 0 0 1px #e2ded5; }
+  .gauge-seg { height: 100%; display: flex; align-items: center; color: #fff; font-weight: 700; font-size: 15px; white-space: nowrap; }
+  .gauge-seg.dem { background: #2f5aa8; padding-left: 18px; }
+  .gauge-seg.rep { background: #b3372c; justify-content: flex-end; padding-right: 18px; }
+  .gauge-divider { position: absolute; left: 50%; top: -8px; bottom: -8px; width: 2px; background: #211f1c; transform: translateX(-1px); pointer-events: none; }
+  .gauge-caption { font-size: 12px; color: #5b574f; margin-top: 8px; }
+  /* Href comes from controlsMarket.kalshiUrl at render time (renderGauge in
+     app.js), so it tracks the event ticker in the data rather than being
+     hardcoded here; hidden until that href is set. */
+  .gauge-header { display: flex; align-items: baseline; gap: 10px; }
+  .gauge-source { display: none; font-size: 12px; }
+  .gauge-source[href] { display: inline-block; }
+
+  /* Seat spectrum */
+  .spectrum-section { margin-bottom: 52px; }
+  .spectrum-header { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 12px; flex-wrap: wrap; gap: 8px; }
+
+  .bar-wrap-wide { position: relative; height: 108px; width: 100%; padding-top: 20px; box-sizing: border-box; }
+  /* Height is deliberately shorter than the .bar-wrap-wide padding band (20px):
+     the majority line's stub rises 8px above the bar into that band, so a
+     full-height callout box centered its text right where the line starts and
+     the "50 seats" label collided with it. 10px lifts the text clear of the
+     stub. */
+  .callout { position: absolute; top: 0; height: 10px; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; white-space: nowrap; text-align: center; pointer-events: none; transform: translateX(-50%); }
+  .bar-wide { position: relative; height: 88px; width: 100%; display: flex; border-radius: 4px; overflow: hidden; }
+  .solid-block { height: 100%; cursor: pointer; }
+  .solid-block.dem { background: #2f5aa8; }
+  .solid-block.rep { background: #b3372c; }
+  .contested-wrap-wide { height: 100%; display: flex; border-left: 1px solid rgba(250,248,244,0.5); box-sizing: border-box; }
+  .seg-wide { position: relative; flex: 1 1 0%; height: 100%; border-right: 1px solid rgba(250,248,244,0.5); box-sizing: border-box; cursor: pointer; color: #fff; text-decoration: none; }
+  .seg-label-stack { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); display: flex; flex-direction: column; align-items: center; gap: 2px; width: 100%; }
+  .seg-state { font-size: 11px; font-weight: 700; letter-spacing: 0.02em; text-align: center; }
+  .seg-pct { font-size: 9px; font-weight: 600; text-align: center; }
+  .seg-party { font-size: 8px; font-weight: 700; text-align: center; }
+  /* Hover cue for the contested-race links: the global `a:hover` rule below
+     switches text to a dark blue, which would fail the WCAG AA contrast fix
+     just applied to these labels' white-on-colored-background text (see
+     contrast/contested-label-color). Keep the color and use extra boldness
+     as the hover affordance instead. */
+  .seg-wide:hover, .seg-narrow:hover { color: #fff; }
+  .seg-wide:hover .seg-state, .seg-narrow:hover .seg-state,
+  .seg-wide:hover .seg-pct, .seg-narrow:hover .seg-pct,
+  .seg-wide:hover .seg-party, .seg-narrow:hover .seg-party { font-weight: 900; }
+  /* Marks a race with a notable (>10%) independent candidate. A gold sliver
+     along the segment edge used to read as a border/rendering artifact and
+     needed its own color key in the legend; an asterisk is the conventional
+     "see the caveat" mark and survives being shrunk down at narrow widths.
+     Cream glyph with a dark halo so it clears WCAG contrast against the
+     whole blue->purple->red segment scale, and it's placed clear of the
+     centered seg-label stack in both layouts. */
+  .ind-mark { font-size: 15px; font-weight: 700; line-height: 1; color: #faf8f4; text-shadow: 0 0 2px rgba(33,31,28,0.95), 0 0 4px rgba(33,31,28,0.6); pointer-events: none; }
+  .ind-mark-h { position: absolute; top: 2px; left: 50%; transform: translateX(-50%); }
+  /* Badge marking "primary not yet decided" -- a plain page-colored sliver
+     used to read as a rendering artifact rather than an intentional status
+     marker, so this is a small filled "?" badge with its own border instead,
+     visible against every segment fill color. Weight/size matches the ★
+     special-election marker style (see .special-mark). */
+  .pending-mark-h { position: absolute; bottom: 4px; left: 50%; transform: translateX(-50%); }
+  .majority-line-wide { position: absolute; top: 12px; bottom: -8px; width: 2px; background: #211f1c; transform: translateX(-1px); pointer-events: none; }
+  /* Whitespace break separating each Strong D/R group from the lean-and-tossup
+     races. It's a flex sibling of the segments (grow set inline from
+     GROUP_GAP_UNITS in app.js) rather than a margin, so the group brackets and
+     the leans divider below can be positioned with the same unit math the
+     segments themselves are laid out with. Painted page-colored rather than
+     left transparent because .bar-wide is a rounded, overflow-hidden box that
+     may pick up a background of its own later. */
+  .seg-gap-wide { height: 100%; background: #faf8f4; }
+  /* Marker band under the wide bar. margin-top clears the 8px stub the
+     majority line drops below the bar, so the two never overlap even when the
+     leans divider lands a segment or two away from the 50-seat line. */
+  .lean-band-wide { position: relative; width: 100%; height: 30px; margin-top: 10px; }
+  .strong-group { position: absolute; top: 0; }
+  .strong-group.dem { color: #2f5aa8; }
+  .strong-group.rep { color: #b3372c; }
+  /* Open-bottomed bracket: it reads as pointing up at the run of segments it
+     spans. currentColor keeps it in step with the party color on .strong-group. */
+  .strong-bracket { height: 6px; border: 2px solid currentColor; border-bottom: none; border-radius: 2px 2px 0 0; box-sizing: border-box; }
+  .strong-label { margin-top: 3px; text-align: center; font-size: 11px; font-weight: 700; white-space: nowrap; }
+  /* The leans divider is deliberately quieter than .majority-line-wide -- 1px,
+     ink-soft, and confined to the band instead of crossing the bar -- because
+     the two can land within a couple of segments of each other and the 50-seat
+     line is the more important of the two. */
+  .lean-mark { position: absolute; top: -10px; width: 1px; transform: translateX(-0.5px); }
+  /* Tall enough to close the band's 10px margin and meet the bottom edge of
+     the bar -- a tick floating in the whitespace reads as a stray artifact
+     rather than a divider at a specific point in the ordering. */
+  .lean-tick { display: block; width: 1px; height: 20px; background: #5b574f; }
+  /* The labels (and their arrows) carry the party colors the "not up" blocks
+     and the Strong D/R brackets use, so every marker naming a side of the
+     bar is keyed the same way. The tick itself stays ink-soft -- it's a
+     divider, not a party marker. */
+  .lean-label { position: absolute; top: 22px; font-size: 10px; font-weight: 700; white-space: nowrap; }
+  .lean-label.lean-d { right: 5px; color: #2f5aa8; }
+  .lean-label.lean-r { left: 5px; color: #b3372c; }
+
+  .bar-wrap-narrow { display: none; justify-content: center; padding-right: 78px; box-sizing: border-box; }
+  @media (max-width: 719px) {
+    .bar-wrap-wide { display: none; }
+    /* The marker band is a sibling of .bar-wrap-wide rather than a child (it
+       has to sit clear of the majority line's stub), so it needs its own half
+       of the wide/narrow swap. */
+    .lean-band-wide { display: none; }
+    .bar-wrap-narrow { display: flex; }
+    /* The not-up blocks get their height from an inline flex-grow proportional
+       to seat count (see app.js), which works for the wide bar because its
+       track height is fixed regardless of proportions. In the narrow stacked
+       layout the track's *height* is what's being divided up, so a solid
+       party's ~30 "not up" seats can stretch into a tall, empty-looking
+       rectangle. Cap the block's height instead of letting it grow, and let
+       the contested segment list absorb the freed space. !important is
+       needed to win over the inline flex-grow style. */
+    .solid-block-narrow { flex: 0 0 60px !important; max-height: 60px; }
+    .contested-wrap-narrow { flex: 1 1 auto !important; }
+  }
+  /* Between the mobile stacked list (<=719px) and the point where the wide
+     seat bar has room for full-size per-segment labels (>=1024px), segments
+     are too narrow for an 11px state abbreviation without it running into
+     neighboring segments. Scale the abbreviation down instead of hiding it;
+     overflow:hidden on the segment is a safety net in case a label still
+     doesn't fit. */
+  .seg-wide { overflow: hidden; }
+  @media (min-width: 720px) and (max-width: 1023px) {
+    .seg-wide .seg-state { font-size: 7px; letter-spacing: 0; }
+  }
+  /* Height comes from the contents (the 900px .bar-track-narrow plus the two
+     "not up" captions) rather than a fixed figure -- a hardcoded height
+     over-allocated by ~43px, which showed up as dead space between the bar
+     and the legend below it. */
+  .bar-inner-narrow { position: relative; width: 100%; max-width: 300px; }
+  .solid-caption { text-align: center; font-size: 11px; font-weight: 700; }
+  .solid-caption.dem { color: #1c3f7a; margin-bottom: 6px; }
+  .solid-caption.rep { color: #8a2a22; }
+  .bar-track-narrow { position: relative; height: 900px; width: 100%; margin: 0 0 6px; }
+  .bar-narrow { position: relative; height: 100%; width: 100%; display: flex; flex-direction: column; border-radius: 4px; overflow: hidden; }
+  .solid-block-narrow { width: 100%; cursor: pointer; }
+  .solid-block-narrow.dem { background: #2f5aa8; }
+  .solid-block-narrow.rep { background: #b3372c; }
+  .contested-wrap-narrow { width: 100%; display: flex; flex-direction: column; border-top: 1px solid rgba(250,248,244,0.5); box-sizing: border-box; }
+  .seg-narrow { position: relative; flex: 1 1 0%; width: 100%; border-bottom: 1px solid rgba(250,248,244,0.5); box-sizing: border-box; cursor: pointer; color: #fff; text-decoration: none; display: flex; align-items: center; justify-content: center; gap: 5px; }
+  .seg-narrow .seg-state { font-size: 10px; }
+  .pending-badge { display: inline-flex; align-items: center; justify-content: center; width: 12px; height: 12px; border-radius: 50%; background: #faf8f4; border: 1.5px solid #211f1c; color: #211f1c; font-size: 9px; font-weight: 800; line-height: 1; pointer-events: none; }
+  .ind-mark-v { position: absolute; top: 50%; left: 7px; transform: translateY(-24%); }
+  .pending-mark-v { position: absolute; top: 50%; right: 4px; transform: translateY(-50%); }
+  .majority-line-narrow { position: absolute; left: -8px; right: -8px; height: 2px; background: #211f1c; transform: translateY(-1px); pointer-events: none; }
+  .majority-label-narrow { position: absolute; right: -8px; transform: translate(100%, -50%); font-size: 10px; font-weight: 700; color: #211f1c; white-space: nowrap; pointer-events: none; padding-left: 4px; }
+  /* Narrow counterpart of .seg-gap-wide. The stacked layout has no horizontal
+     gutter to spare on the left (the right one is already carrying the
+     "50 seats" label), so the group names ride inside the break itself. */
+  .seg-gap-narrow { width: 100%; background: #faf8f4; display: flex; align-items: center; justify-content: center; gap: 12px; }
+  .gap-label { font-size: 9px; font-weight: 700; letter-spacing: 0.02em; white-space: nowrap; }
+  .gap-label.dem { color: #2f5aa8; }
+  .gap-label.rep { color: #b3372c; }
+  /* Unlike .majority-line-narrow this stops at the bar's edge instead of
+     crossing it: at 1px it would be lost among the cream segment borders, and
+     darkening it enough to read over the segment fills would make the quieter
+     of the two dividers the louder one. A stub out into the gutter, joining
+     the bar to its labels, is the vertical equivalent of the wide bar's tick
+     sitting below the track. */
+  .lean-line-narrow { position: absolute; left: 100%; width: 8px; height: 1px; background: #5b574f; pointer-events: none; }
+  /* Shares the right gutter with the "50 seats" label. The two lines sit at
+     least a segment apart vertically and these labels are stacked clear of the
+     divider itself, so they don't collide. */
+  .lean-labels-narrow { position: absolute; left: calc(100% + 11px); transform: translateY(-50%); display: flex; flex-direction: column; gap: 3px; pointer-events: none; }
+  .lean-labels-narrow .lean-label { position: static; }
+
+  .legend { display: flex; gap: 22px; flex-wrap: wrap; margin-top: 14px; font-size: 12px; color: #5b574f; }
+  .legend-item { display: flex; align-items: center; gap: 6px; }
+  .swatch { display: inline-block; }
+  /* Legend chip for the asterisk: the same glyph on a segment color, so the
+     key looks like what's actually drawn on the bar (a bare cream asterisk
+     would vanish against the page background). Uses COLORS.rep, which is
+     what the only currently-flagged race (NE) is actually shaded. */
+  .swatch.ind { position: relative; width: 14px; height: 14px; border-radius: 2px; background: #b3372c; }
+  .swatch.ind .ind-mark { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -24%); }
+
+  /* Tooltip (shared by spectrum + map) */
+  .tooltip { position: absolute; pointer-events: none; background: #211f1c; color: #faf8f4; padding: 10px 13px; border-radius: 4px; font-size: 12.5px; line-height: 1.5; min-width: 150px; max-height: 260px; overflow-y: auto; overflow-x: hidden; box-shadow: 0 8px 20px rgba(0,0,0,0.28); z-index: 5; transform: translate(-50%, -100%); display: none; }
+  /* The seat-bar tooltips (wide + narrow) are row-anchored a few pixels off
+     their trigger rather than pinned under the cursor (see
+     positionAboveOrBelowRow() in app.js), so the cursor has to actually
+     cross onto the tooltip box to keep it open -- unlike the map tooltip,
+     which stays cursor-adjacent. All three need to actually receive
+     pointer input though: the seat-bar ones for hover (and, for the
+     scrollable long-list variant, wheel/touch scroll input) via the
+     mouseenter/mouseleave handling in app.js's wireTooltip(); the map one so
+     its own "Kalshi" hint link (see tooltipHtml() in map.js) is reachable --
+     on touch, where the state shape deliberately doesn't navigate, that
+     in-tooltip link is the only way to get to Kalshi at all. So none of the
+     three can stay pointer-events:none per the base rule above. */
+  #tooltip-wide, #tooltip-narrow, #map-tooltip { pointer-events: auto; }
+  .tooltip.scrollable { scrollbar-gutter: stable; }
+  /* Keep the scrollbar itself visible as a hint that the list scrolls,
+     rather than relying on the OS's default overlay-scrollbar behavior
+     (which on most platforms only draws it during an active scroll/hover). */
+  .tooltip.scrollable { scrollbar-width: thin; scrollbar-color: rgba(250,248,244,0.35) transparent; }
+  .tooltip.scrollable::-webkit-scrollbar { width: 8px; }
+  .tooltip.scrollable::-webkit-scrollbar-track { background: transparent; }
+  .tooltip.scrollable::-webkit-scrollbar-thumb { background: rgba(250,248,244,0.35); border-radius: 4px; }
+  .tooltip.scrollable::-webkit-scrollbar-thumb:hover { background: rgba(250,248,244,0.5); }
+  /* Row-anchored tooltips (both the wide and narrow seat-bar layouts): top/left
+     mark the row's top-center by default, so the tooltip sits above it
+     (translate -100% on Y) at a stable height regardless of which cell in
+     the row triggered it. When there's no room above, .below is added and
+     top/left instead mark the row's bottom-center, so the tooltip sits
+     below it. */
+  .tooltip.below { transform: translate(-50%, 0); }
+  /* Visual anchor linking an open tooltip back to its source cell/state: a
+     small triangular tail pointing at whatever opened it, aimed horizontally
+     via --tail-x (set in positionAboveOrBelowRow() in app.js and
+     positionTooltip() in map.js). The scrollable long-list variant has no
+     single source cell to point at, so it gets no tail. */
+  #tooltip-wide::after, #tooltip-narrow::after, #map-tooltip::after { content: ''; position: absolute; left: var(--tail-x, 50%); transform: translateX(-50%); border: 6px solid transparent; }
+  #tooltip-wide:not(.below)::after, #tooltip-narrow:not(.below)::after, #map-tooltip:not(.below)::after { top: 100%; border-top-color: #211f1c; }
+  #tooltip-wide.below::after, #tooltip-narrow.below::after, #map-tooltip.below::after { bottom: 100%; border-bottom-color: #211f1c; }
+  #tooltip-wide.scrollable::after, #tooltip-narrow.scrollable::after { display: none; }
+  /* The tail renders just outside the box; let it show through instead of
+     being clipped by the base rule's overflow (irrelevant here anyway --
+     these tooltip variants never approach the 260px cap). */
+  #tooltip-wide:not(.scrollable), #tooltip-narrow:not(.scrollable), #map-tooltip { overflow: visible; }
+  .tooltip .title { font-weight: 700; font-size: 13.5px; margin-bottom: 3px; white-space: nowrap; }
+  /* Rows share one CSS grid (label column + value column) instead of each
+     row flexing independently -- a shared grid gives every row's value
+     column the same width (the widest value in the tooltip), so a party
+     letter always sits the same distance from the label regardless of how
+     many digits that row's own percentage happens to have (e.g. "R 1%" vs
+     "D 99%" no longer staggers the letters -- see .party/.pct below). */
+  .tooltip .rows { display: grid; grid-template-columns: 1fr auto; column-gap: 14px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  /* Sub-heading inside a tooltip that separates unrelated groups of rows,
+     e.g. the map tooltip's "not up in 2026" senator vs. the actual 2026
+     race candidates -- see tooltipHtml() in map.js. Spans both grid columns
+     since it isn't part of the label/value pairing. */
+  .tooltip .group-label { grid-column: 1 / -1; font-size: 10.5px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.03em; color: #9a958c; margin: 6px 0 2px; white-space: nowrap; }
+  .tooltip .group-label:first-of-type { margin-top: 2px; }
+  /* The row itself renders no box of its own -- display:contents promotes
+     its label/value spans directly into the shared .rows grid above, which
+     is what makes the value column line up across rows. */
+  .tooltip .row { display: contents; }
+  .tooltip .row .value { color: #cfcac0; text-align: right; }
+  /* Race rows split their value into a party letter and a percentage (see
+     rowValueHtml() in app.js / tooltipHtml() in map.js) so the two can be
+     pinned to opposite ends of the (now fixed-width) value column: the
+     letter flush to the label side, the percentage flush to the tooltip's
+     edge. */
+  .tooltip .row .value.split { display: flex; justify-content: space-between; gap: 4px; }
+  /* Now a real <a> (see tooltipHtml() in app.js) -- block + explicit color
+     override the global `a`/`a:hover` rules (blue, meant for the page body)
+     so it keeps reading as muted tooltip text. The whole line is clickable,
+     but only the "Kalshi ↗" span (see .hint-link below) is underlined, so
+     the underline reads as pointing at the destination rather than
+     decorating the whole instruction sentence. */
+  .tooltip .hint { display: block; margin-top: 6px; padding-top: 6px; border-top: 1px solid rgba(250,248,244,0.25); font-size: 11px; color: #9a958c; white-space: nowrap; text-decoration: none; }
+  .tooltip .hint .hint-link { text-decoration: underline; }
+  .tooltip .hint:hover { color: #cfcac0; }
+
+  /* Map */
+  .map-section-caption { margin-bottom: 14px; }
+  #map-wrap { position: relative; width: 100%; aspect-ratio: 975 / 610; max-height: 560px; }
+  #map-svg { width: 100%; height: 100%; display: block; }
+  path.state { stroke: #faf8f4; stroke-width: 1; }
+  path.state:hover { stroke: #211f1c; stroke-width: 1.5; }
+  /* Only states with a contested 2026 race actually link out to Kalshi (see
+     map.js) -- cursor:pointer is scoped to those so the affordance doesn't
+     overpromise on solid/uncontested states, which have no single race to
+     link to. */
+  path.state.linked { cursor: pointer; }
+</style>
+</head>
+<body>
+<div id="page">
+
+  <div class="header">
+    <div class="title-group">
+      <img class="site-logo" src="favicon/favicon.svg" alt="" width="70" height="70">
+      <div>
+        <div class="eyebrow">2026 Election Cycle</div>
+        <h1>U.S. Senate Races</h1>
+      </div>
+    </div>
+    <div class="meta">
+      <div>Kalshi prediction-market odds</div>
+      <div id="fetched-at-label">Updated —</div>
+    </div>
+  </div>
+
+  <div id="status">Loading market data…</div>
+
+  <div id="app">
+
+    <div class="gauge-section">
+      <div class="gauge-header">
+        <div class="section-heading">Chamber control</div>
+        <a class="gauge-source" id="gauge-source-link" target="_blank" rel="noopener noreferrer">Kalshi &#8599;</a>
+      </div>
+      <div class="gauge-wrap" id="gauge-wrap">
+        <div class="gauge-bar">
+          <div class="gauge-seg dem" id="gauge-dem"></div>
+          <div class="gauge-seg rep" id="gauge-rep"></div>
+        </div>
+        <div class="gauge-divider"></div>
+      </div>
+      <div class="gauge-caption">Market-implied probability of majority control after the 2026 midterms. Includes the VP as tiebreaker.</div>
+    </div>
+
+    <div class="spectrum-section">
+      <div class="spectrum-header">
+        <div class="section-heading">All 100 seats</div>
+        <div class="caption">65 not up in 2026 · 35 contested, sorted by Democratic win probability</div>
+      </div>
+
+      <div id="bar-wide-container"></div>
+      <div id="bar-narrow-container"></div>
+
+      <div class="legend">
+        <!-- Only the two entries that aren't self-evident from the bar
+             itself: the blue->purple->red gradient reads as a party scale
+             without a key, so its four swatches were dropped. -->
+        <div class="legend-item"><span class="swatch ind" aria-hidden="true"><span class="ind-mark">&#42;</span></span>Independent polling above 10%</div>
+        <div class="legend-item"><span class="pending-badge">?</span>Primary not yet decided</div>
+      </div>
+    </div>
+
+    <div class="map-subsection">
+      <div class="section-heading">2026 races by state</div>
+      <div class="caption map-section-caption">Shaded by the probability of winning party; gray states have no Senate race this cycle. Hover/tap for race details and sitting rep(s).</div>
+      <div id="map-wrap">
+        <svg id="map-svg" viewBox="0 0 975 610"></svg>
+        <div class="tooltip" id="map-tooltip"></div>
+      </div>
+    </div>
+
+  </div>
+
+</div>
+<script src="./vendor/d3.min.js"></script>
+<script src="./vendor/topojson-client.min.js"></script>
+<script type="module" src="./app.js"></script>
+</body>
+</html>
