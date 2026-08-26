@@ -8,6 +8,7 @@
 # account-scoped permissions:
 #   Workers Scripts      Edit
 #   Workers KV Storage   Edit
+#   Workers Tail         Read
 
 account_id = "your-32-char-account-id"
 

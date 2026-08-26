@@ -11,6 +11,7 @@ variable "api_token" {
     The token needs these account-scoped permissions:
       Workers Scripts      Edit
       Workers KV Storage   Edit
+      Workers Tail         Read
   EOT
   type        = string
   default     = null

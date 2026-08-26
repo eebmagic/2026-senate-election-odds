@@ -28,11 +28,21 @@ and it bills compute on each. Full reasoning is in the task item,
 ## First-time setup
 
 **1. Create an API token** at
-<https://dash.cloudflare.com/profile/api-tokens> → Create Custom Token, with
-these **account-scoped** permissions:
+<https://dash.cloudflare.com/profile/api-tokens> → Create Custom Token. Add
+three permission rows, all under the **Account** group:
 
-- `Workers Scripts` → **Edit**
-- `Workers KV Storage` → **Edit**
+| Group | Permission | Level | Needed by |
+|---|---|---|---|
+| Account | `Workers Scripts` | **Edit** | the worker script, the cron trigger, the workers.dev subdomain |
+| Account | `Workers KV Storage` | **Edit** | the KV namespace |
+| Account | `Workers Tail` | **Read** | `workers_script` and `workers_script_subdomain` both declare it |
+
+Then under **Account Resources**, set Include → your account. No Zone
+permissions are needed — nothing here touches DNS or a zone, since the worker
+is served from workers.dev rather than a custom domain. (Adding a custom
+domain later would add a Zone → `Workers Routes` → Edit row.)
+
+`Edit` covers both Read and Write for that group.
 
 Export it rather than putting it in tfvars, so it stays out of both the file
 and the state:
