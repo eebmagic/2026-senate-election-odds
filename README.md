@@ -69,7 +69,17 @@ after touching any of those three:
 ```bash
 python3 worker/build.py          # rebuild
 python3 worker/build.py --check  # assert the committed bundle is current
+python3 worker/test_worker.py    # run the bundle against a stubbed runtime
 ```
+
+`worker/test_worker.py` executes the generated bundle with stubbed `js`,
+`pyodide.ffi`, and `workers` modules plus a fake Kalshi and a fake KV, so the
+cron path, the promotion gate, stale carryforward, auth, and every HTTP route
+can be checked without deploying. The stubs deliberately mirror the real
+workers-py API — `Response` is a Python class with no `.new()`, exactly like
+the SDK's — because an earlier stub that invented a `.new()` classmethod hid a
+bug that only appeared in production. Stdlib-only, like the rest of the
+pipeline.
 
 Promotion works exactly as it does locally: a run where more than 25% of
 tickers failed is recorded but does *not* replace the live blob.

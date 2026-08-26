@@ -31,6 +31,7 @@ import asyncio
 import hmac
 import json
 import random
+import traceback
 
 from js import fetch as js_fetch, AbortSignal, Object, URL
 from pyodide.ffi import to_js
@@ -210,6 +211,9 @@ def _cors_headers(env):
 
 
 def _json_response(env, payload, status=200, cache_seconds=0):
+    """Build a response via the SDK's Response, which is a *Python* class taking
+    (body, status=..., headers=<dict>) -- not the JS constructor, so no .new()
+    and no to_js on the headers."""
     headers = {"content-type": "application/json; charset=utf-8"}
     headers.update(_cors_headers(env))
     if cache_seconds:
@@ -217,7 +221,7 @@ def _json_response(env, payload, status=200, cache_seconds=0):
     else:
         headers["cache-control"] = "no-store"
     body = payload if isinstance(payload, str) else json.dumps(payload)
-    return Response.new(body, _js_opts({"status": status, "headers": headers}))
+    return Response(body, status=status, headers=headers)
 
 
 def _authorized(request, env):
@@ -235,18 +239,31 @@ def _authorized(request, env):
 
 class Default(WorkerEntrypoint):
     async def scheduled(self, controller, env, ctx):
-        record = await run_refresh(env)
+        try:
+            record = await run_refresh(env)
+        except Exception:
+            # Without this the dashboard shows only "exception", not what broke.
+            print(traceback.format_exc())
+            raise
         # Surfaces in `wrangler tail` / the dashboard's cron invocation log.
         print(json.dumps(record))
 
     async def fetch(self, request):
+        try:
+            return await self._route(request)
+        except Exception as e:
+            print(traceback.format_exc())
+            return _json_response(
+                self.env, {"error": f"{type(e).__name__}: {e}"}, status=500)
+
+    async def _route(self, request):
         env = self.env
         url = URL.new(request.url)
         path = url.pathname
         method = request.method
 
         if method == "OPTIONS":
-            return Response.new("", _js_opts({"status": 204, "headers": _cors_headers(env)}))
+            return Response("", status=204, headers=_cors_headers(env))
 
         if path in ("/api/live-data", "/live-senate-data.json"):
             if method == "GET":
@@ -265,9 +282,18 @@ class Default(WorkerEntrypoint):
                     payload = json.loads(await request.text())
                 except (ValueError, TypeError) as e:
                     return _json_response(env, {"error": f"invalid JSON: {e}"}, status=400)
-                if not isinstance(payload, dict) or "races" not in payload:
+                # Validate the shape, not just the key: whatever lands here
+                # becomes the next run's stale-carryforward baseline, so a
+                # malformed races list would break every later refresh rather
+                # than just this request.
+                races = payload.get("races") if isinstance(payload, dict) else None
+                if not isinstance(races, list) or not all(
+                        isinstance(r, dict) and "state" in r for r in races):
                     return _json_response(
-                        env, {"error": "payload is not a live-senate-data document"}, status=400)
+                        env,
+                        {"error": "payload is not a live-senate-data document: "
+                                  "'races' must be a list of objects with a 'state'"},
+                        status=400)
                 await kv_put_json(env.SENATE_DATA, LIVE_KEY, payload)
                 return _json_response(
                     env, {"ok": True, "races": len(payload.get("races", []))})
