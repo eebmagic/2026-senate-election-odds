@@ -1,0 +1,19 @@
+# Copy to terraform.tfvars and fill in. terraform.tfvars is gitignored.
+#
+# The API token is NOT set here on purpose -- export it instead, so it stays
+# out of both this file and the state:
+#   export CLOUDFLARE_API_TOKEN=...
+#
+# Create it at https://dash.cloudflare.com/profile/api-tokens with these
+# account-scoped permissions:
+#   Workers Scripts      Edit
+#   Workers KV Storage   Edit
+
+account_id = "your-32-char-account-id"
+
+# Optional overrides -- defaults are in variables.tf.
+# worker_name           = "senate-election-data"
+# workers_dev_subdomain = "your-subdomain"   # only affects the URL outputs
+# cron_schedule  = "0 */12 * * *"   # 00:00 and 12:00 UTC
+# allowed_origin = "https://your-ui-domain.example"
+# fetch_delay_ms = 1000

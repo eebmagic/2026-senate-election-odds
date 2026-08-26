@@ -11,6 +11,11 @@ scripts/
   event_ticker_map.json          event_ticker -> { state, raceType }, checked-in, changes rarely
   build_live_data.py             the transform script.py calls: raw discovery dict -> live-senate-data.json shape
 live_data_snapshots/             tracked per-run audit trail written by script.py, newest N kept (see --keep-snapshots)
+worker/                          the same pipeline as a Cloudflare Python Worker (see "Cloud deployment")
+  entry.py                       Cloudflare handlers + fetch layer; the only Worker-specific code
+  build.py                       generates dist/worker.py by inlining build_live_data.py + the event map
+  dist/worker.py                 generated, tracked -- the single file that gets deployed
+infra/                           OpenTofu plan for the Worker + KV namespace + cron trigger (see infra/README.md)
 web/                             the published site (static, no build step)
   index.html / app.js / map.js / senate-shared.js
   vendor/                        d3, topojson-client, us-atlas topology (vendored, no CDN)
@@ -44,3 +49,42 @@ Every contested-race segment in the spectrum bar (wide and narrow layouts alike)
 Nothing else needs to change — `web/`'s HTML/CSS/JS never touch the data pipeline. Serve `web/` as a static directory (any static host works; no build step) and each run of `script.py` is the only thing that needs to happen to pick up new odds.
 
 Run it locally with e.g. `python3 -m http.server` from inside `web/`.
+
+## Cloud deployment
+
+The same pipeline also runs on Cloudflare, so the site refreshes itself without
+anyone running `script.py`: a **Python Worker** on a 12-hourly cron trigger
+fetches Kalshi, runs the identical transform, and writes the result into a
+**Workers KV** namespace, which it serves at `/api/live-data`.
+
+The transform is not duplicated. `scripts/build_live_data.py`'s `build()` is
+pure (dict in, dict out, no I/O), so it runs unmodified in the Worker —
+`worker/entry.py` only supplies what genuinely has to differ there: `js.fetch`
+instead of `urllib`, `asyncio.sleep` instead of `time.sleep`, and KV instead of
+files. The Terraform provider takes a *single* `content_file` for a Python
+worker, so `worker/build.py` inlines `build_live_data.py` and
+`event_ticker_map.json` into one generated `worker/dist/worker.py`. Re-run it
+after touching any of those three:
+
+```bash
+python3 worker/build.py          # rebuild
+python3 worker/build.py --check  # assert the committed bundle is current
+```
+
+Promotion works exactly as it does locally: a run where more than 25% of
+tickers failed is recorded but does *not* replace the live blob.
+
+Local JSON files remain the default and are still the easy path for
+development. `--push-to` additionally publishes a local run to a deployed
+worker, which is how you seed or hand-correct the live data without waiting for
+the next cron tick:
+
+```bash
+export SENATE_INGEST_TOKEN=...   # `tofu output -raw ingest_token`
+python3 script.py --push-to https://<worker>.<subdomain>.workers.dev
+```
+
+Provisioning (KV namespace, worker, cron trigger, workers.dev route) lives in
+`infra/` as an OpenTofu plan — see `infra/README.md` for the token
+permissions, the apply steps, and how to trigger a run on demand instead of
+waiting 12 hours.

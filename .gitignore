@@ -3,3 +3,10 @@
 senate-election-map-kanban
 
 __pycache__/
+
+# OpenTofu / Terraform (infra/). The provider lock file IS tracked.
+infra/.terraform/
+infra/terraform.tfvars
+infra/*.tfstate
+infra/*.tfstate.*
+infra/crash*.log
