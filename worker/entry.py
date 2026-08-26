@@ -46,6 +46,9 @@ from workers import Response, WorkerEntrypoint
 
 BASE = "https://external-api.kalshi.com/trade-api/v2/markets"
 
+USER_AGENT = ("senate-election-map/1.0 "
+              "(+https://github.com/eebmagic/2026-senate-election-odds)")
+
 CONTROLS_EVENT_TICKER = "CONTROLS-2026"
 
 # KV keys. LIVE_KEY is the only one the UI reads.
@@ -138,7 +141,8 @@ async def fetch_event_markets(event_ticker, max_retries=MAX_RETRIES):
     for attempt in range(max_retries):
         # Rebuilt per attempt: an AbortSignal that has already fired stays
         # aborted, so a reused one would fail every retry instantly.
-        opts = _js_opts({"headers": {"accept": "application/json"}})
+        opts = _js_opts({"headers": {"accept": "application/json",
+                                     "user-agent": USER_AGENT}})
         opts.signal = AbortSignal.timeout(int(REQUEST_TIMEOUT_SECONDS * 1000))
         try:
             resp = await js_fetch(url, opts)
@@ -157,11 +161,27 @@ async def fetch_event_markets(event_ticker, max_retries=MAX_RETRIES):
                 # A malformed body will be malformed again immediately.
                 return [], f"invalid JSON: {e}"
 
+        detail = ""
+        try:
+            detail = (await resp.text())[:200].strip()
+        except Exception:
+            pass
+
         if (status == 429 or status >= 500) and attempt < max_retries - 1:
-            last_error = f"HTTP {status}"
-            delay = await _sleep_with_jitter(delay)
+            last_error = f"HTTP {status} {detail}".strip()
+            # Honour Retry-After when the server sends one -- guessing with
+            # exponential backoff against a real limiter just wastes the budget.
+            retry_after = resp.headers.get("retry-after")
+            if retry_after:
+                try:
+                    await asyncio.sleep(min(float(retry_after), 30))
+                    delay *= 2
+                except (TypeError, ValueError):
+                    delay = await _sleep_with_jitter(delay)
+            else:
+                delay = await _sleep_with_jitter(delay)
             continue
-        return [], f"HTTP {status}"
+        return [], f"HTTP {status} {detail}".strip()
 
     return [], last_error or "unknown error"
 
@@ -352,19 +372,49 @@ async def run_diagnostics(env):
     except Exception as e:
         await record("abort_signal_timeout", ok=False, error=f"{type(e).__name__}: {e}")
 
-    # 2. One real Kalshi request, no retries and no sleeps in the path.
-    started = _now_iso()
-    try:
-        opts = _js_opts({"headers": {"accept": "application/json"}})
-        opts.signal = AbortSignal.timeout(int(REQUEST_TIMEOUT_SECONDS * 1000))
-        resp = await js_fetch(f"{BASE}?event_ticker={CONTROLS_EVENT_TICKER}", opts)
-        body = await resp.text()
-        await record("kalshi_fetch", ok=True, status=int(resp.status),
-                     bytes=len(body), startedAt=started,
-                     markets=len(json.loads(body).get("markets", [])))
-    except Exception as e:
-        await record("kalshi_fetch", ok=False, startedAt=started,
-                     error=f"{type(e).__name__}: {e}")
+    # 2. Real Kalshi requests. The interesting question with a 429 is what the
+    #    server actually says, whether identifying ourselves changes anything,
+    #    and whether it's every request or only bursts.
+    async def probe(label, headers, spacing=0):
+        started = _now_iso()
+        try:
+            if spacing:
+                await asyncio.sleep(spacing)
+            opts = _js_opts({"headers": headers})
+            opts.signal = AbortSignal.timeout(int(REQUEST_TIMEOUT_SECONDS * 1000))
+            resp = await js_fetch(f"{BASE}?event_ticker={CONTROLS_EVENT_TICKER}", opts)
+            body = await resp.text()
+            status = int(resp.status)
+            fields = {
+                "ok": True,
+                "status": status,
+                "startedAt": started,
+                "body": body[:300].strip(),
+            }
+            for h in ("retry-after", "cf-ray", "x-kalshi-cache-hits",
+                      "cache-control", "server", "x-ratelimit-remaining"):
+                v = resp.headers.get(h)
+                if v:
+                    fields[h] = v
+            if status == 200:
+                fields["markets"] = len(json.loads(body).get("markets", []))
+                fields.pop("body", None)
+            await record(label, **fields)
+            return status
+        except Exception as e:
+            await record(label, ok=False, startedAt=started,
+                         error=f"{type(e).__name__}: {e}")
+            return None
+
+    plain = {"accept": "application/json"}
+    identified = {"accept": "application/json", "user-agent": USER_AGENT}
+
+    await probe("kalshi_plain", plain)
+    await probe("kalshi_with_user_agent", identified)
+    # Spaced retries: if these recover, it's burst throttling and a longer
+    # FETCH_DELAY_MS fixes it. If all three 429, the egress IP is the problem.
+    for n, gap in enumerate((3, 5, 10), start=1):
+        await probe(f"kalshi_after_{gap}s", identified, spacing=gap)
 
     # 3. Does asyncio.sleep actually resolve here? If the event loop has no
     #    timer source this never returns and the request hangs -- but steps 1

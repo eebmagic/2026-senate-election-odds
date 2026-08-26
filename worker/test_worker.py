@@ -23,11 +23,20 @@ ffi.to_js = to_js; pyodide.ffi = ffi
 sys.modules["pyodide"] = pyodide; sys.modules["pyodide.ffi"] = ffi
 
 # ---- js -------------------------------------------------------------------
+class Hdrs(dict):
+    def get(self, k, default=None): return dict.get(self, k.lower(), default)
+
 class FakeResp:
-    def __init__(self, status, body): self.status = status; self._b = body
+    """Mirrors the JS Response surface the worker actually touches: .status,
+    .headers.get(), and an awaitable .text()."""
+    def __init__(self, status, body, headers=None):
+        self.status = status
+        self._b = body
+        self.headers = Hdrs({k.lower(): v for k, v in (headers or {}).items()})
     async def text(self): return self._b
 
 FAIL_TICKERS = set()
+RATE_LIMITED = {}   # ticker -> remaining number of 429s before it succeeds
 
 def make_markets(event, info):
     cp = info.get("candidateParties")
@@ -40,6 +49,10 @@ def make_markets(event, info):
 
 async def fake_fetch(url, opts):
     event = url.split("event_ticker=")[1]
+    if RATE_LIMITED.get(event):
+        RATE_LIMITED[event] -= 1
+        return FakeResp(429, '{"error":"rate limit exceeded"}',
+                        {"Retry-After": "1"})
     if event in FAIL_TICKERS:
         return FakeResp(500, "boom")
     if event == "CONTROLS-2026":
@@ -228,6 +241,22 @@ async def main():
     resp = await call("/api/refresh", "POST", T)
     print(f"  {'ok ' if resp.status == 200 else '!! '}POST /api/refresh authed  -> {resp.status}")
     if resp.status != 200: ok = False
+
+    # 429 handling: retried, Retry-After honoured, body carried into the error.
+    print("\n[rate limiting]")
+    one = sorted(EVENT_MAP_RAW)[0]
+    RATE_LIMITED[one] = 2          # two 429s, then success
+    markets, err = await mod.fetch_event_markets(one)
+    print(f"  recovers after 2x429: markets={len(markets)} err={err}")
+    if err is not None or not markets:
+        ok = False; print("  !! FAIL: should have recovered on the 3rd attempt")
+
+    RATE_LIMITED[one] = 99         # never recovers
+    markets, err = await mod.fetch_event_markets(one)
+    RATE_LIMITED.clear()
+    print(f"  gives up with: {err!r}")
+    if not err or "429" not in err or "rate limit exceeded" not in err:
+        ok = False; print("  !! FAIL: error should carry status AND server detail")
 
     # Deadline: a run that can't finish must settle, not hang.
     print("\n[deadline]")
