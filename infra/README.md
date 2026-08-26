@@ -105,6 +105,11 @@ python3 script.py --push-to "$BASE"
   suspect this first.
 - **`python_workers` is a beta flag.** It's set in `compatibility_flags`.
   Cloudflare may change what it requires as Python Workers move toward GA.
+- **The cron trigger can't be destroyed by tofu.** The provider warns about
+  this on every plan: `cloudflare_workers_cron_trigger` has no delete API, so
+  `tofu destroy` leaves it behind and it must be removed by hand in the
+  dashboard (Workers & Pages → the worker → Settings → Triggers). Changing
+  `cron_schedule` and re-applying works fine; only removal is manual.
 - **`fetch_delay_ms`** is a plain-text binding, not baked into the script, so
   you can tune the politeness delay with an `apply` and no rebuild.
 
