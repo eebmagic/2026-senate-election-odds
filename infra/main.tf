@@ -40,8 +40,20 @@ resource "cloudflare_workers_script" "senate_data" {
   main_module    = "worker.py"
 
   compatibility_date = var.compatibility_date
-  # Python Workers are still in open beta and require this flag.
-  compatibility_flags = ["python_workers"]
+
+  compatibility_flags = [
+    # Python Workers are still in open beta and require this flag.
+    "python_workers",
+
+    # Required because compatibility_date is on/after 2026-04-21, when
+    # workerd's pythonExternalSDK flag begins defaulting on ("Don't include
+    # the Python sdk from the runtime, use a vendored copy"). Vendoring is
+    # something pywrangler does when it builds a bundle; this resource uploads
+    # a single .py file and has no way to add the package, so without this the
+    # deploy dies at `from workers import ...` with ModuleNotFoundError.
+    # Disabling it puts the runtime-provided SDK back.
+    "disable_python_external_sdk",
+  ]
 
   bindings = [
     {

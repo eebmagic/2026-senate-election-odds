@@ -115,6 +115,19 @@ python3 script.py --push-to "$BASE"
   suspect this first.
 - **`python_workers` is a beta flag.** It's set in `compatibility_flags`.
   Cloudflare may change what it requires as Python Workers move toward GA.
+- **`disable_python_external_sdk` is load-bearing, not optional.** From
+  workerd's flag table, `pythonExternalSDK` defaults on for any
+  `compatibility_date` on or after **2026-04-21**, and means "don't include the
+  Python sdk from the runtime, use a vendored copy". Vendoring is something
+  `pywrangler` does while building a bundle — this resource uploads a single
+  `.py` file and cannot add the package — so without the disable flag the
+  deploy fails at `from workers import Response, WorkerEntrypoint` with
+  `ModuleNotFoundError: No module named 'workers'`.
+
+  If a future runtime drops the built-in SDK entirely, the options are to pin
+  `compatibility_date` before 2026-04-21, or to move the code upload to
+  `pywrangler`/`wrangler` and leave tofu owning only the KV namespace and cron
+  trigger.
 - **The cron trigger can't be destroyed by tofu.** The provider warns about
   this on every plan: `cloudflare_workers_cron_trigger` has no delete API, so
   `tofu destroy` leaves it behind and it must be removed by hand in the
