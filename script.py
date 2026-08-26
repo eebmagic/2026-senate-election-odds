@@ -26,12 +26,15 @@ Note: SENATELA-26 genuinely carries Kentucky's markets (a naming leftover on
 Kalshi's side, not actually Louisiana); real Louisiana is
 KXSENATELA-26NOV. This is encoded in event_ticker_map.json, not here.
 
-Local JSON files are still the default output -- the Cloudflare worker
-(worker/entry.py) runs this same pipeline on a cron trigger in production, and
-this script stays the convenient path for local dev and manual re-runs. Pass
---push-to to additionally PUT the built payload at a deployed worker's
-/api/live-data, which is how you seed or hand-correct the live KV blob without
-waiting for the next cron tick.
+Local JSON files are the default output. Pass --push-to to additionally PUT the
+built payload at the deployed Cloudflare worker's /api/live-data, which is how
+the live site gets its data: .github/workflows/refresh-data.yml runs this script
+every 12 hours with --push-to --no-write-local.
+
+The worker itself only stores and serves the payload -- it does not fetch
+Kalshi. Workers egress from IPs shared across many Cloudflare customers and
+Kalshi rate-limits by IP, so the fetch has to happen somewhere with a usable
+IP, which is here.
 
 Usage:
     python3 script.py

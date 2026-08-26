@@ -1,0 +1,54 @@
+name: Refresh Senate data
+
+# The 12-hourly schedule lives here rather than as a Cloudflare cron trigger:
+# the worker used to fetch Kalshi itself, but Workers egress from IPs shared
+# across many Cloudflare customers and Kalshi rate-limits by IP, so nearly
+# every request came back 429. Actions runners have a usable IP.
+on:
+  schedule:
+    # 00:00 and 12:00 UTC. GitHub queues scheduled runs on a best-effort basis,
+    # so treat the timing as approximate.
+    - cron: "0 */12 * * *"
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+concurrency:
+  # Never let two refreshes push at once -- the worker's PUT is last-write-wins.
+  group: refresh-data
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    # 36 tickers at 2.5s plus retries; well under this, but bounded so a
+    # rate-limited run can't sit for six hours.
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      # script.py is stdlib-only, so there is nothing to install.
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Fetch Kalshi and push to Cloudflare
+        env:
+          SENATE_INGEST_TOKEN: ${{ secrets.SENATE_INGEST_TOKEN }}
+          WORKER_URL: ${{ vars.SENATE_WORKER_URL }}
+        run: |
+          if [ -z "$WORKER_URL" ]; then
+            echo "::error::Set the SENATE_WORKER_URL repository variable to the worker's base URL"
+            exit 1
+          fi
+          # --no-write-local: nothing here should commit back to the repo, and
+          # with no local file the stale-carryforward baseline is read from
+          # whatever the worker is currently serving.
+          python3 script.py --push-to "$WORKER_URL" --no-write-local
+
+      - name: Report what the worker is now serving
+        if: always()
+        env:
+          WORKER_URL: ${{ vars.SENATE_WORKER_URL }}
+        run: curl -sS "$WORKER_URL/health" || true

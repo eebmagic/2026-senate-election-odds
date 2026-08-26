@@ -30,15 +30,6 @@ variable "kv_namespace_title" {
   default     = "senate-election-data"
 }
 
-variable "cron_schedule" {
-  description = <<-EOT
-    Cron expression for the refresh job, in UTC. Default is every 12 hours at
-    00:00 and 12:00 UTC.
-  EOT
-  type        = string
-  default     = "0 */12 * * *"
-}
-
 variable "ingest_token" {
   description = <<-EOT
     Bearer token guarding the worker's authed endpoints (PUT /api/live-data and
@@ -58,16 +49,6 @@ variable "allowed_origin" {
   EOT
   type        = string
   default     = "*"
-}
-
-variable "fetch_delay_ms" {
-  description = <<-EOT
-    Politeness delay between Kalshi event-ticker requests, in milliseconds.
-    Tunable without a redeploy (it's a plain_text binding, not baked into the
-    script). Lower values shorten the cron run; too low risks 429s.
-  EOT
-  type        = number
-  default     = 1000
 }
 
 variable "compatibility_date" {

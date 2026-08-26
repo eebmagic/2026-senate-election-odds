@@ -11,11 +11,12 @@ scripts/
   event_ticker_map.json          event_ticker -> { state, raceType }, checked-in, changes rarely
   build_live_data.py             the transform script.py calls: raw discovery dict -> live-senate-data.json shape
 live_data_snapshots/             tracked per-run audit trail written by script.py, newest N kept (see --keep-snapshots)
-worker/                          the same pipeline as a Cloudflare Python Worker (see "Cloud deployment")
-  entry.py                       Cloudflare handlers + fetch layer; the only Worker-specific code
-  build.py                       generates dist/worker.py by inlining build_live_data.py + the event map
-  dist/worker.py                 generated, tracked -- the single file that gets deployed
-infra/                           OpenTofu plan for the Worker + KV namespace + cron trigger (see infra/README.md)
+worker/                          Cloudflare Worker that stores + serves the data (see "Cloud deployment")
+  worker.py                      the whole worker; uploaded as-is, no build step
+  test_worker.py                 runs it against a stubbed Cloudflare runtime
+infra/                           OpenTofu plan for the Worker + KV namespace (see infra/README.md)
+.github/workflows/
+  refresh-data.yml               12-hourly: runs script.py and pushes to Cloudflare
 web/                             the published site (static, no build step)
   index.html / app.js / map.js / senate-shared.js
   vendor/                        d3, topojson-client, us-atlas topology (vendored, no CDN)
@@ -52,49 +53,54 @@ Run it locally with e.g. `python3 -m http.server` from inside `web/`.
 
 ## Cloud deployment
 
-The same pipeline also runs on Cloudflare, so the site refreshes itself without
-anyone running `script.py`: a **Python Worker** on a 12-hourly cron trigger
-fetches Kalshi, runs the identical transform, and writes the result into a
-**Workers KV** namespace, which it serves at `/api/live-data`.
+The published site reads its data from **Cloudflare Workers KV**, fronted by a
+small Python Worker (`worker/worker.py`) that stores and serves it:
 
-The transform is not duplicated. `scripts/build_live_data.py`'s `build()` is
-pure (dict in, dict out, no I/O), so it runs unmodified in the Worker —
-`worker/entry.py` only supplies what genuinely has to differ there: `js.fetch`
-instead of `urllib`, `asyncio.sleep` instead of `time.sleep`, and KV instead of
-files. The Terraform provider takes a *single* `content_file` for a Python
-worker, so `worker/build.py` inlines `build_live_data.py` and
-`event_ticker_map.json` into one generated `worker/dist/worker.py`. Re-run it
-after touching any of those three:
+| Route | Auth | Purpose |
+|---|---|---|
+| `GET /api/live-data` | public | the current payload (also at `/live-senate-data.json`) |
+| `PUT /api/live-data` | bearer | store a payload from `script.py --push-to` |
+| `GET /health` | public | when data last landed, `dataAgeSeconds`, race/stale counts |
+
+**The worker does not fetch Kalshi.** It did, on a Cloudflare cron trigger, but
+Workers egress from IPs shared across many Cloudflare customers and Kalshi
+rate-limits by IP, so nearly every request came back `429` while the same URL
+returned `200` from a laptop. So the pipeline runs where it has a usable IP and
+pushes the result in. `.github/workflows/refresh-data.yml` does that every 12
+hours:
 
 ```bash
-python3 worker/build.py          # rebuild
-python3 worker/build.py --check  # assert the committed bundle is current
-python3 worker/test_worker.py    # run the bundle against a stubbed runtime
+python3 script.py --push-to "$WORKER_URL" --no-write-local
 ```
 
-`worker/test_worker.py` executes the generated bundle with stubbed `js`,
-`pyodide.ffi`, and `workers` modules plus a fake Kalshi and a fake KV, so the
-cron path, the promotion gate, stale carryforward, auth, and every HTTP route
-can be checked without deploying. The stubs deliberately mirror the real
-workers-py API — `Response` is a Python class with no `.new()`, exactly like
-the SDK's — because an earlier stub that invented a `.new()` classmethod hid a
-bug that only appeared in production. Stdlib-only, like the rest of the
-pipeline.
-
-Promotion works exactly as it does locally: a run where more than 25% of
-tickers failed is recorded but does *not* replace the live blob.
-
-Local JSON files remain the default and are still the easy path for
-development. `--push-to` additionally publishes a local run to a deployed
-worker, which is how you seed or hand-correct the live data without waiting for
-the next cron tick:
+`--no-write-local` skips the local snapshot/output files, and with no local file
+to read the stale-carryforward baseline comes from whatever the worker is
+currently serving. Without it, `--push-to` writes the local files too and
+publishes — useful for seeding or hand-correcting from your machine:
 
 ```bash
 export SENATE_INGEST_TOKEN=...   # `tofu output -raw ingest_token`
 python3 script.py --push-to https://<worker>.<subdomain>.workers.dev
 ```
 
-Provisioning (KV namespace, worker, cron trigger, workers.dev route) lives in
-`infra/` as an OpenTofu plan — see `infra/README.md` for the token
-permissions, the apply steps, and how to trigger a run on demand instead of
-waiting 12 hours.
+Because the schedule lives outside Cloudflare, nothing on the Cloudflare side
+knows it exists — the worker will serve stale data indefinitely if the pusher
+stops. `/health`'s `dataAgeSeconds` is the signal to watch.
+
+The worker is self-contained (no transform, no event map, no inlining), so it
+uploads as-is with no build step. `worker/test_worker.py` runs it against
+stubbed `js` and `workers` modules and a fake KV, covering storage round-trips,
+payload validation, auth, and every route:
+
+```bash
+python3 worker/test_worker.py
+```
+
+The stubs deliberately mirror the real workers-py API rather than being
+convenient — `Response` is a Python class with no `.new()`, responses expose
+`.headers` — because two production bugs got through earlier stubs that weren't
+faithful on exactly those points.
+
+Provisioning (KV namespace, worker, workers.dev route) lives in `infra/` as an
+OpenTofu plan — see `infra/README.md` for token permissions, apply steps, and
+the GitHub secret/variable the workflow needs.

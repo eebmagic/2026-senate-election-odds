@@ -20,23 +20,13 @@ output "data_url" {
 }
 
 output "health_url" {
-  description = "Last cron run's outcome (promoted or not, per-ticker failures)."
+  description = "When data last landed, how old it is, and what the last push contained."
   value       = local.worker_base != null ? "${local.worker_base}/health" : local.url_hint
-}
-
-output "refresh_url" {
-  description = "Authed POST endpoint that runs the pipeline on demand, instead of waiting for the next cron tick."
-  value       = local.worker_base != null ? "${local.worker_base}/api/refresh" : local.url_hint
 }
 
 output "kv_namespace_id" {
   description = "ID of the KV namespace holding the live blob."
   value       = cloudflare_workers_kv_namespace.senate_data.id
-}
-
-output "cron_schedule" {
-  description = "Active refresh schedule (UTC)."
-  value       = var.cron_schedule
 }
 
 output "ingest_token" {
