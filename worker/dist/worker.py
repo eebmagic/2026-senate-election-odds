@@ -44,7 +44,7 @@ import hmac
 import json
 import random
 import traceback
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 from js import fetch as js_fetch, AbortSignal, Object, URL
 from pyodide.ffi import to_js
@@ -502,6 +502,7 @@ CONTROLS_EVENT_TICKER = "CONTROLS-2026"
 # KV keys. LIVE_KEY is the only one the UI reads.
 LIVE_KEY = "live-senate-data"
 LAST_RUN_KEY = "last-run"
+DIAG_KEY = "diag"
 
 # LAST_RUN_KEY's "state" field, served by /health. Written once when a run
 # starts and again when it settles, so a refresh is observable while it is
@@ -526,8 +527,16 @@ TIMESTAMP_FORMAT = "%Y-%m-%dT%H:%M:%SZ"
 # default 1s inter-ticker delay this lands a write roughly every 5s.
 PROGRESS_EVERY_N_TICKERS = 5
 
-MAX_RETRIES = 5
-INITIAL_BACKOFF_SECONDS = 3
+# Tighter than script.py's 5/3s. Worst case per ticker here is
+# MAX_RETRIES * REQUEST_TIMEOUT_SECONDS + backoff ~= 36s; at the old values a
+# fully-failing run would have retried for the better part of an hour.
+MAX_RETRIES = 3
+INITIAL_BACKOFF_SECONDS = 2
+
+# Hard ceiling on the fetch phase. Whatever hasn't been fetched when this
+# expires is abandoned and counted as failed, which lets the failure-rate gate
+# settle the run as unhealthy instead of the request hanging indefinitely.
+RUN_DEADLINE_SECONDS = 240
 
 # See script.py: above this fraction of tickers failing, something is
 # systemically wrong rather than a few markets having a bad day.
@@ -618,8 +627,24 @@ async def fetch_all(event_tickers, delay_seconds, on_progress=None):
     discovery = {}
     failures = {}
     total = len(event_tickers)
+    deadline = datetime.now(timezone.utc) + timedelta(seconds=RUN_DEADLINE_SECONDS)
     for i, event_ticker in enumerate(event_tickers, 1):
+        if datetime.now(timezone.utc) >= deadline:
+            # Abandon the rest rather than hang. build() still gets an entry for
+            # every ticker (empty list), so stale-carryforward covers them and
+            # the failure-rate gate decides whether to promote.
+            for remaining in event_tickers[i - 1:]:
+                failures[remaining] = f"abandoned: run exceeded {RUN_DEADLINE_SECONDS}s"
+                discovery[remaining] = []
+            print(f"deadline hit after {i - 1}/{total} tickers; abandoning the rest")
+            break
+        # Printed per ticker so `wrangler tail` shows exactly which one a stalled
+        # run is sitting on. The dashboard withholds logs until the request ends,
+        # which is useless for diagnosing a hang.
+        print(f"[{i}/{total}] fetching {event_ticker}")
         markets, error = await fetch_event_markets(event_ticker)
+        print(f"[{i}/{total}] {event_ticker} -> "
+              + (f"ERROR {error}" if error else f"{len(markets)} markets"))
         if error:
             failures[event_ticker] = error
         discovery[event_ticker] = markets
@@ -752,6 +777,61 @@ async def run_refresh(env, trigger="cron"):
     return record
 
 
+async def run_diagnostics(env):
+    """Isolate the pieces a refresh depends on, one at a time.
+
+    Each step is written to DIAG_KEY the moment it finishes, so if a later step
+    hangs forever the request never returns but `GET /diag` still shows exactly
+    how far it got -- which is the whole problem with debugging a stalled run.
+
+    Ordered cheapest-and-most-suspect first: a single fetch before any sleep,
+    so a hang in one doesn't mask the result of the other.
+    """
+    kv = env.SENATE_DATA
+    steps = []
+
+    async def record(name, **fields):
+        steps.append(dict(name=name, at=_now_iso(), **fields))
+        await kv_put_json(kv, DIAG_KEY, {"startedAt": steps[0]["at"], "steps": steps})
+
+    await record("start")
+
+    # 1. Is AbortSignal.timeout even present in this runtime?
+    try:
+        AbortSignal.timeout(5000)
+        await record("abort_signal_timeout", ok=True)
+    except Exception as e:
+        await record("abort_signal_timeout", ok=False, error=f"{type(e).__name__}: {e}")
+
+    # 2. One real Kalshi request, no retries and no sleeps in the path.
+    started = _now_iso()
+    try:
+        opts = _js_opts({"headers": {"accept": "application/json"}})
+        opts.signal = AbortSignal.timeout(int(REQUEST_TIMEOUT_SECONDS * 1000))
+        resp = await js_fetch(f"{BASE}?event_ticker={CONTROLS_EVENT_TICKER}", opts)
+        body = await resp.text()
+        await record("kalshi_fetch", ok=True, status=int(resp.status),
+                     bytes=len(body), startedAt=started,
+                     markets=len(json.loads(body).get("markets", [])))
+    except Exception as e:
+        await record("kalshi_fetch", ok=False, startedAt=started,
+                     error=f"{type(e).__name__}: {e}")
+
+    # 3. Does asyncio.sleep actually resolve here? If the event loop has no
+    #    timer source this never returns and the request hangs -- but steps 1
+    #    and 2 are already durable in KV by then.
+    started = _now_iso()
+    try:
+        await asyncio.sleep(1)
+        await record("asyncio_sleep_1s", ok=True, startedAt=started)
+    except Exception as e:
+        await record("asyncio_sleep_1s", ok=False, startedAt=started,
+                     error=f"{type(e).__name__}: {e}")
+
+    await record("done")
+    return {"startedAt": steps[0]["at"], "steps": steps}
+
+
 def _cors_headers(env):
     origin = getattr(env, "ALLOWED_ORIGIN", None) or "*"
     return {
@@ -857,6 +937,18 @@ class Default(WorkerEntrypoint):
             if not _authorized(request, env):
                 return _json_response(env, {"error": "unauthorized"}, status=401)
             return _json_response(env, await run_refresh(env, trigger="manual"))
+
+        if path == "/api/diag":
+            if method != "POST":
+                return _json_response(env, {"error": "method not allowed"}, status=405)
+            if not _authorized(request, env):
+                return _json_response(env, {"error": "unauthorized"}, status=401)
+            return _json_response(env, await run_diagnostics(env))
+
+        if path == "/diag":
+            record = await kv_get_json(env.SENATE_DATA, DIAG_KEY)
+            return _json_response(env, record or {"error": "no diagnostics recorded yet"},
+                                  status=200 if record else 404)
 
         if path == "/health":
             record = await kv_get_json(env.SENATE_DATA, LAST_RUN_KEY)

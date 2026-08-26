@@ -130,7 +130,35 @@ record with a long-stale `startedAt` is an abandoned run, not a live one.
 
 For genuinely live logs (including the worker's `print()` output and
 tracebacks) use `npx wrangler tail senate-election-data` instead, which streams
-rather than waiting for the request to finish.
+rather than waiting for the request to finish. The fetch loop prints a line per
+ticker, so a stalled run shows exactly which ticker it is sitting on:
+
+```
+[1/36] fetching KXAKSENATE-26NOV03
+[1/36] KXAKSENATE-26NOV03 -> 2 markets
+[2/36] fetching SENATEAL-26
+```
+
+### Diagnosing a stalled run
+
+If a refresh sits at `tickersFetched: 0`, it is stuck on the very first fetch.
+`POST /api/diag` tests each dependency in isolation:
+
+```bash
+curl -X POST -H "authorization: Bearer $TOKEN" "$BASE/api/diag"
+curl -s "$BASE/diag"        # readable even if the POST above never returns
+```
+
+It checks, in order: whether `AbortSignal.timeout` exists in the runtime, a
+single real Kalshi request with no retries or sleeps, and whether
+`asyncio.sleep` resolves. Each result is written to KV the moment it completes,
+so if a later step hangs forever the request never returns but `GET /diag`
+still shows how far it got — which is the whole difficulty with a stalled run.
+
+The fetch phase is also capped by `RUN_DEADLINE_SECONDS` (240s). Anything
+unfetched when that expires is abandoned and counted as failed, so the run
+settles as unhealthy rather than hanging; with `MAX_RETRIES = 3` the worst case
+per ticker is roughly 36s.
 
 You can also seed KV from your machine instead of letting the worker fetch:
 

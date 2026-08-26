@@ -229,6 +229,34 @@ async def main():
     print(f"  {'ok ' if resp.status == 200 else '!! '}POST /api/refresh authed  -> {resp.status}")
     if resp.status != 200: ok = False
 
+    # Deadline: a run that can't finish must settle, not hang.
+    print("\n[deadline]")
+    kv2 = FakeKV(); env2 = Env(kv2)
+    mod.RUN_DEADLINE_SECONDS = 0          # every ticker is past the deadline
+    rec_d = await mod.run_refresh(env2, trigger="manual")
+    mod.RUN_DEADLINE_SECONDS = 240
+    print(f"  settled state={rec_d['state']} promoted={rec_d['promoted']} "
+          f"failed={rec_d['tickersFailed']}/{rec_d['tickersTotal']}")
+    if rec_d["state"] != "done" or rec_d["promoted"]:
+        ok = False; print("  !! FAIL: expected a settled, unpromoted run")
+    if rec_d["tickersFailed"] != rec_d["tickersTotal"]:
+        ok = False; print("  !! FAIL: abandoned tickers should all count as failed")
+    if mod.LIVE_KEY in kv2.store:
+        ok = False; print("  !! FAIL: nothing should have been promoted")
+
+    # Diagnostics endpoint records every step durably.
+    print("\n[diag]")
+    diag = await mod.run_diagnostics(env)
+    names = [st["name"] for st in diag["steps"]]
+    print(f"  steps: {names}")
+    persisted = json.loads(kv.store[mod.DIAG_KEY])["steps"]
+    if names[0] != "start" or names[-1] != "done":
+        ok = False; print("  !! FAIL: diag should run start..done")
+    if len(persisted) != len(names):
+        ok = False; print("  !! FAIL: every step must be durable in KV")
+    else:
+        print(f"  all {len(persisted)} steps persisted to KV as they completed")
+
     print("\n" + ("ALL CHECKS PASSED" if ok else "SOME CHECKS FAILED"))
     return 0 if ok else 1
 
