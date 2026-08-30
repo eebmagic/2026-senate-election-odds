@@ -11,6 +11,12 @@ scripts/
   event_ticker_map.json          event_ticker -> { state, raceType }, checked-in, changes rarely
   build_live_data.py             the transform script.py calls: raw discovery dict -> live-senate-data.json shape
 live_data_snapshots/             tracked per-run audit trail written by script.py, newest N kept (see --keep-snapshots)
+worker/                          Cloudflare Worker that stores + serves the data (see "Cloud deployment")
+  worker.py                      the whole worker; uploaded as-is, no build step
+  test_worker.py                 runs it against a stubbed Cloudflare runtime
+infra/                           OpenTofu plan for the Worker + KV namespace (see infra/README.md)
+.github/workflows/
+  refresh-data.yml               12-hourly: runs script.py and pushes to Cloudflare
 web/                             the published site (static, no build step)
   index.html / app.js / map.js / senate-shared.js
   vendor/                        d3, topojson-client, us-atlas topology (vendored, no CDN)
@@ -44,3 +50,57 @@ Every contested-race segment in the spectrum bar (wide and narrow layouts alike)
 Nothing else needs to change — `web/`'s HTML/CSS/JS never touch the data pipeline. Serve `web/` as a static directory (any static host works; no build step) and each run of `script.py` is the only thing that needs to happen to pick up new odds.
 
 Run it locally with e.g. `python3 -m http.server` from inside `web/`.
+
+## Cloud deployment
+
+The published site reads its data from **Cloudflare Workers KV**, fronted by a
+small Python Worker (`worker/worker.py`) that stores and serves it:
+
+| Route | Auth | Purpose |
+|---|---|---|
+| `GET /api/live-data` | public | the current payload (also at `/live-senate-data.json`) |
+| `PUT /api/live-data` | bearer | store a payload from `script.py --push-to` |
+| `GET /health` | public | when data last landed, `dataAgeSeconds`, race/stale counts |
+
+**The worker does not fetch Kalshi.** It did, on a Cloudflare cron trigger, but
+Workers egress from IPs shared across many Cloudflare customers and Kalshi
+rate-limits by IP, so nearly every request came back `429` while the same URL
+returned `200` from a laptop. So the pipeline runs where it has a usable IP and
+pushes the result in. `.github/workflows/refresh-data.yml` does that every 12
+hours:
+
+```bash
+python3 script.py --push-to "$WORKER_URL" --no-write-local
+```
+
+`--no-write-local` skips the local snapshot/output files, and with no local file
+to read the stale-carryforward baseline comes from whatever the worker is
+currently serving. Without it, `--push-to` writes the local files too and
+publishes — useful for seeding or hand-correcting from your machine:
+
+```bash
+export SENATE_INGEST_TOKEN=...   # `tofu output -raw ingest_token`
+python3 script.py --push-to https://<worker>.<subdomain>.workers.dev
+```
+
+Because the schedule lives outside Cloudflare, nothing on the Cloudflare side
+knows it exists — the worker will serve stale data indefinitely if the pusher
+stops. `/health`'s `dataAgeSeconds` is the signal to watch.
+
+The worker is self-contained (no transform, no event map, no inlining), so it
+uploads as-is with no build step. `worker/test_worker.py` runs it against
+stubbed `js` and `workers` modules and a fake KV, covering storage round-trips,
+payload validation, auth, and every route:
+
+```bash
+python3 worker/test_worker.py
+```
+
+The stubs deliberately mirror the real workers-py API rather than being
+convenient — `Response` is a Python class with no `.new()`, responses expose
+`.headers` — because two production bugs got through earlier stubs that weren't
+faithful on exactly those points.
+
+Provisioning (KV namespace, worker, workers.dev route) lives in `infra/` as an
+OpenTofu plan — see `infra/README.md` for token permissions, apply steps, and
+the GitHub secret/variable the workflow needs.

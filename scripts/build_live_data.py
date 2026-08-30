@@ -22,7 +22,11 @@ import re
 from datetime import datetime, timezone
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parent.parent
+# These path defaults only matter to the standalone CLI. The Cloudflare worker
+# inlines this module into a single generated file (see worker/build.py) where
+# there is no __file__ to resolve, so guard rather than blow up at import.
+ROOT = (Path(__file__).resolve().parent.parent
+        if "__file__" in globals() else Path.cwd())
 INPUT_PATH = ROOT / "latest_kalshi_discovery.json"
 EVENT_MAP_PATH = ROOT / "scripts" / "event_ticker_map.json"
 OUTPUT_PATH = ROOT / "web" / "live-senate-data.json"

@@ -26,13 +26,25 @@ Note: SENATELA-26 genuinely carries Kentucky's markets (a naming leftover on
 Kalshi's side, not actually Louisiana); real Louisiana is
 KXSENATELA-26NOV. This is encoded in event_ticker_map.json, not here.
 
+Local JSON files are the default output. Pass --push-to to additionally PUT the
+built payload at the deployed Cloudflare worker's /api/live-data, which is how
+the live site gets its data: .github/workflows/refresh-data.yml runs this script
+every 12 hours with --push-to --no-write-local.
+
+The worker itself only stores and serves the payload -- it does not fetch
+Kalshi. Workers egress from IPs shared across many Cloudflare customers and
+Kalshi rate-limits by IP, so the fetch has to happen somewhere with a usable
+IP, which is here.
+
 Usage:
     python3 script.py
     python3 script.py --dry-run
     python3 script.py --output /tmp/live-senate-data.json --keep-snapshots 0
+    python3 script.py --push-to https://senate-data.example.workers.dev
 """
 import argparse
 import json
+import os
 import random
 import sys
 import time
@@ -162,6 +174,59 @@ def prune_snapshots(snapshot_dir: Path, keep: int) -> None:
         old.unlink()
 
 
+PUSH_TOKEN_ENV_VAR = "SENATE_INGEST_TOKEN"
+PUSH_PATH = "/api/live-data"
+
+
+def fetch_previous_from_worker(base_url: str):
+    """The worker's currently-live payload, for build()'s stale-carryforward.
+
+    Only used with --no-write-local, where there is no local file to carry
+    forward from: the destination's current contents are the right baseline.
+    Returns None if the worker has no data yet or is unreachable -- build()
+    treats that the same as a missing previous file.
+    """
+    url = base_url.rstrip("/") + PUSH_PATH
+    try:
+        with urllib.request.urlopen(url, timeout=REQUEST_TIMEOUT_SECONDS) as resp:
+            return json.load(resp)
+    except (urllib.error.URLError, TimeoutError, json.JSONDecodeError) as e:
+        reason = getattr(e, "reason", e)
+        print(f"Could not read current worker data for carry-forward ({reason}); "
+              "treating this run as having no previous data.", file=sys.stderr)
+        return None
+
+
+def push_to_worker(base_url: str, token: str, payload) -> bool:
+    """PUT the built payload at the deployed worker's ingest endpoint.
+
+    Returns True on success. Never raises -- a failed push must not lose the
+    run's local output, which has already been written by the time this is
+    called.
+    """
+    url = base_url.rstrip("/") + PUSH_PATH
+    body = (json.dumps(payload, indent=2) + "\n").encode()
+    req = urllib.request.Request(
+        url,
+        data=body,
+        method="PUT",
+        headers={
+            "authorization": f"Bearer {token}",
+            "content-type": "application/json",
+        },
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=REQUEST_TIMEOUT_SECONDS) as resp:
+            print(f"Pushed to {url} (HTTP {resp.status}): {resp.read().decode().strip()}")
+            return True
+    except urllib.error.HTTPError as e:
+        detail = e.read().decode(errors="replace").strip()
+        print(f"Push to {url} failed: HTTP {e.code} {detail}", file=sys.stderr)
+    except (urllib.error.URLError, TimeoutError) as e:
+        print(f"Push to {url} failed: {getattr(e, 'reason', e)}", file=sys.stderr)
+    return False
+
+
 def parse_args():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--output", type=Path, default=OUTPUT_PATH,
@@ -178,7 +243,20 @@ def parse_args():
                               "was exceeded (default: leave the previous good output in place)")
     parser.add_argument("--dry-run", action="store_true",
                          help="fetch and print, but don't write any files")
-    return parser.parse_args()
+    parser.add_argument("--push-to", metavar="WORKER_URL", default=None,
+                         help="also PUT the built payload to this deployed worker's "
+                              f"{PUSH_PATH} (e.g. https://senate-data.example.workers.dev). "
+                              "Local JSON files are still written unless --no-write-local.")
+    parser.add_argument("--push-token", default=os.environ.get(PUSH_TOKEN_ENV_VAR),
+                         help=f"bearer token for --push-to (default: ${PUSH_TOKEN_ENV_VAR})")
+    parser.add_argument("--no-write-local", action="store_true",
+                         help="with --push-to, skip the local snapshot/output files entirely")
+    args = parser.parse_args()
+    if args.push_to and not args.push_token:
+        parser.error(f"--push-to needs a token: pass --push-token or set ${PUSH_TOKEN_ENV_VAR}")
+    if args.no_write_local and not args.push_to:
+        parser.error("--no-write-local only makes sense together with --push-to")
+    return args
 
 
 def main():
@@ -198,8 +276,12 @@ def main():
 
     # Previous good output feeds build()'s stale-carryforward logic --
     # captured before any write this run, whether or not this run ends up
-    # promoted.
-    previous = bld.load_previous_output(args.output)
+    # promoted. With --no-write-local there is no local file to read, so the
+    # baseline comes from whatever the worker is currently serving.
+    if args.no_write_local:
+        previous = fetch_previous_from_worker(args.push_to)
+    else:
+        previous = bld.load_previous_output(args.output)
     output = bld.build(discovery, event_map, previous)
     print(f"\nBuilt {len(output['races'])} races "
           f"({len(output['failedStates'])} failed: {output['failedStates']})")
@@ -210,26 +292,38 @@ def main():
 
     now = datetime.now(timezone.utc)
     healthy = failure_rate <= FAILURE_RATE_ALERT_THRESHOLD
+    promote = healthy or args.force_promote
 
-    # Every run's output is kept as a snapshot regardless of health; only a
-    # healthy run (or an explicit override) also gets promoted to the stable
-    # `--output` path web/app.js actually reads.
-    snapshot_path = snapshot_path_for(args.snapshot_dir, now)
-    bld.write_json_atomic(snapshot_path, output)
-    print(f"Wrote {snapshot_path}")
+    if not args.no_write_local:
+        # Every run's output is kept as a snapshot regardless of health; only a
+        # healthy run (or an explicit override) also gets promoted to the stable
+        # `--output` path web/app.js actually reads.
+        snapshot_path = snapshot_path_for(args.snapshot_dir, now)
+        bld.write_json_atomic(snapshot_path, output)
+        print(f"Wrote {snapshot_path}")
 
-    if healthy or args.force_promote:
-        bld.write_json_atomic(args.output, output)
-        print(f"Promoted it to {args.output}"
-              + ("" if healthy else " (--force-promote overrode the failure-rate threshold)"))
-    else:
-        # Too many tickers failed to trust this run as the new live data --
-        # keep the previous good web/live-senate-data.json in place.
-        print(f"\n{len(failures)}/{len(event_tickers)} tickers failed "
-              f"(> {FAILURE_RATE_ALERT_THRESHOLD:.0%} threshold). Did NOT promote to {args.output} "
-              f"-- leaving the previous good file in place. Pass --force-promote to override.")
+        if promote:
+            bld.write_json_atomic(args.output, output)
+            print(f"Promoted it to {args.output}"
+                  + ("" if healthy else " (--force-promote overrode the failure-rate threshold)"))
+        else:
+            # Too many tickers failed to trust this run as the new live data --
+            # keep the previous good web/live-senate-data.json in place.
+            print(f"\n{len(failures)}/{len(event_tickers)} tickers failed "
+                  f"(> {FAILURE_RATE_ALERT_THRESHOLD:.0%} threshold). Did NOT promote to {args.output} "
+                  f"-- leaving the previous good file in place. Pass --force-promote to override.")
 
-    prune_snapshots(args.snapshot_dir, args.keep_snapshots)
+        prune_snapshots(args.snapshot_dir, args.keep_snapshots)
+
+    if args.push_to:
+        # Same promotion gate as the local file and as the worker's own cron:
+        # a mostly-failed run must not become the live blob.
+        if promote:
+            if not push_to_worker(args.push_to, args.push_token, output):
+                return 1
+        else:
+            print(f"Did NOT push to {args.push_to} -- same failure-rate threshold as above. "
+                  "Pass --force-promote to override.", file=sys.stderr)
 
     # Non-zero exit lets a cron/CI wrapper alert on a systemic failure
     # (auth change, endpoint moved, outage) rather than a few markets having
