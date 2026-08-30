@@ -1,14 +1,7 @@
-// Shared data + helpers for the 2026 Senate Races Tracker.
-// Ported from design_handoff_senate_tracker/data.js. COLORS, thresholds, and
-// the derivation helpers are lifted essentially as-is (per that file's own
-// header comment, they're portable). SOLID_SEATS is the 65 seats not up in
-// 2026 -- static config, checked in here, updated only on
-// appointment/death/resignation (see the README's data provenance caveat).
-//
-// RACES / CONTROLS_MARKET / FETCHED_AT are NOT here: those are the live,
-// nightly-refreshed pieces, fetched at runtime from live-senate-data.json
-// (see app.js). buildStateSummaries() therefore takes races as a parameter
-// instead of closing over a module-level RACES export.
+// Shared constants, probability helpers, and the tooltip positioner used by
+// app.js (seat bar) and map.js (choropleth). SOLID_SEATS is static config;
+// the live race data is fetched by app.js and passed into
+// buildStateSummaries().
 
 export const COLORS = {
   demSolid: '#1c3f7a',
@@ -26,36 +19,21 @@ export const COLORS = {
 export const TOSSUP_LOW = 0.40;
 export const TOSSUP_HIGH = 0.60;
 
-// A race counts as "strong" for one party once that party's *own* leading
-// candidate is at or above this. Deliberately separate from TOSSUP_LOW/HIGH:
-// those drive the continuous color scale (and are stated in terms of the
-// Democratic probability), while this is the one-sided cutoff the seat bar
-// uses to split its ordered race list into Strong D / lean-and-tossup /
-// Strong R groups.
+// One-sided cutoff: a race is "strong" for a party when that party's own
+// leader is at or above this. Splits the seat bar into Strong D / middle /
+// Strong R; unrelated to the TOSSUP_LOW/HIGH color scale.
 export const STRONG_LEAN = 0.80;
 
-// No hover on touchscreens, so tooltips there open on tap instead, and
-// mouseenter/mouseleave are ignored entirely -- mobile browsers still fire
-// synthetic mouse events on tap, and acting on them would dismiss a tooltip
-// mid-tap, before its link could be hit. See wireTooltip() in app.js and the
-// state-node handlers in map.js. Detected once, at module load.
+// Touchscreens have no hover: tooltips open on tap and mouse events are
+// ignored (synthetic ones around a tap would dismiss a tooltip mid-tap).
 export const isTouchDevice = window.matchMedia('(hover: none), (pointer: coarse)').matches;
 
-// Grace period before a mouseleave-triggered hide actually takes effect.
-// Tooltips are anchored a few pixels off their trigger (see the `gap` in
-// positionAboveOrBelowRow() in app.js / positionTooltip() in map.js), and a
-// mouse moving toward the tooltip can land in that gap for a moment -- on
-// neither the trigger nor the tooltip -- which would otherwise fire an
-// instant mouseleave and dismiss the tooltip before the cursor ever reaches
-// it. Deferring the hide gives that crossing time to land on one of them and
-// cancel it. This is what makes a tooltip's own link clickable at all.
+// Grace period before a mouseleave hide fires, so a cursor crossing the few
+// px between trigger and tooltip doesn't dismiss it. Makes the tooltip's own
+// link reachable.
 export const HIDE_DELAY_MS = 150;
 
-// USPS postal code -> full state name, for tooltip headers (app.js's
-// buildRaceTooltip()) that would otherwise show a redundant abbreviation
-// right next to the segment's own on-cell abbreviation label. Mirrors the
-// set map.js's FIPS_TO_POSTAL covers (50 states + DC + PR), though only the
-// 50 states + DC ever actually appear in live race data.
+// USPS code -> full state name, for tooltip headers.
 export const STATE_NAMES = {
   AL: 'Alabama', AK: 'Alaska', AZ: 'Arizona', AR: 'Arkansas', CA: 'California',
   CO: 'Colorado', CT: 'Connecticut', DE: 'Delaware', DC: 'District of Columbia',
@@ -147,11 +125,8 @@ export function isTossUp(demProbability) {
   return demProbability > TOSSUP_LOW && demProbability < TOSSUP_HIGH;
 }
 
-// Kept for any display-time formatting that still wants it (e.g. a tooltip
-// suffix), but the authoritative pending-primary detection now happens once,
-// server-side, in scripts/build_live_data.py -- races carry explicit
-// demPrimaryPending / repPrimaryPending booleans instead of the client
-// re-deriving it from candidate name strings on every render.
+// Pending-primary detection is done server-side (build_live_data.py); this
+// just ORs the resulting booleans.
 export function raceHasPendingPrimary(race) {
   return !!(race.demPrimaryPending || race.repPrimaryPending);
 }
@@ -160,18 +135,13 @@ export function isMaterialIndependent(race) {
   return !!(race.otherTickers && race.otherTickers.some(t => t.probability > 0.10));
 }
 
-// Total probability held by candidates who are neither the Democratic nor the
-// Republican nominee. Each race's outcome prices are normalized to sum to 1.0
-// (see scripts/build_live_data.py), so dem + rep + other == 1.
+// Total probability held by non-major-party candidates (prices sum to 1.0).
 export function otherProbability(race) {
   return (race.otherTickers || []).reduce((sum, t) => sum + (t.probability || 0), 0);
 }
 
-// The candidate actually most likely to win, across all three lanes. Returns
-// { party: 'D' | 'R' | 'I', probability }. The seat bar's cell label used to
-// derive this as Math.max(demProbability, repProbability), which ignores
-// independents entirely -- an independent leading a race would still have
-// shown the runner-up major party's number and letter.
+// Most likely winner across all three lanes -> { party: 'D'|'R'|'I',
+// probability }. Max(dem, rep) would miss a leading independent.
 export function raceLeader(race) {
   const lanes = [
     { party: 'D', probability: race.demProbability },
@@ -181,38 +151,13 @@ export function raceLeader(race) {
   return lanes.reduce((best, lane) => (lane.probability > best.probability ? lane : best));
 }
 
-// Where a race sits on the Democratic<->Republican axis that the seat bar is
-// ordered by and that both the bar and the map are colored by. 1.0 is the
-// Democratic end, 0.0 the Republican end.
-//
-// The key is the leader's own probability, mirrored onto that leader's side:
-// a D-led race sits at demProbability, an R-led race at 1 - repProbability.
-// For a straight two-way race those are the same number, so nothing about the
-// 31 two-way races changes.
-//
-// What it fixes is the three-way case. Ordering by demProbability alone
-// silently assigns an independent's entire probability mass to the Republican
-// end, which made Nebraska -- where the Republican sits at only ~71% precisely
-// because an independent is at ~29% -- render as the single safest Republican
-// seat on the board, further right than Wyoming at 98%.
-//
-// Anchoring to the leader instead keeps the bar's printed percentages in step
-// with its ordering: each cell is labeled with its leader's real probability
-// (see raceLeader), and because that same number places the cell, the labels
-// now run monotonically outward from the center on both sides. NE reads 71 R
-// and sits between IA at 59 R and KS at 80 R, exactly where 71 belongs. The
-// alternative -- positioning by demProbability + other/2 -- orders the bar
-// sensibly too, but leaves NE's printed 71 stranded between 80 and 88.
-//
-// The number is always a real candidate's odds, never a synthesized blend.
-// The independent's share is what the asterisk marks; it is not folded into
-// either party's figure.
-//
-// Edge case: if an independent is the outright favorite the leader has no side
-// to anchor to, so the race falls back to the center-weighted position. No
-// race in the 2026 map currently hits this -- Osborn leads no state -- but
-// build_race() has no fixed suffix convention for independents, so the branch
-// must exist rather than assume a D or R leader.
+// Position on the D<->R axis the seat bar is ordered/colored by (1.0 = D,
+// 0.0 = R): the leader's own probability mirrored onto the leader's side
+// (D-led -> demProb, R-led -> 1 - repProb; identical for a two-way race).
+// Using demProb alone would assign an independent's whole share to the R end
+// -- e.g. Nebraska (R ~71%, independent ~29%) would sort right of Wyoming's
+// 98%. A leading independent has no side, so it falls back to center-weighted
+// (no 2026 race hits this, but there's no fixed independent-suffix rule).
 export function raceAxisProb(race) {
   const leader = raceLeader(race);
   if (leader.party === 'D') return race.demProbability;
@@ -227,7 +172,7 @@ function hexLerp(a, b, t) {
   return '#' + c.map(v => v.toString(16).padStart(2, '0')).join('');
 }
 
-// Continuous blue<->red scale driven by Democratic win probability (a 50/50 race reads as purple).
+// Continuous red<->blue scale by Democratic win probability (50/50 = purple).
 export function colorForDemProb(p) {
   return hexLerp(COLORS.rep, COLORS.dem, p);
 }
@@ -239,12 +184,62 @@ export function fmtPct(p) {
   return rounded + '%';
 }
 
+// Escapes text for interpolation into tooltip HTML, including attribute
+// context (`"` -> &quot; for the hint link's href).
+export function escapeHtml(s) {
+  return String(s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
 export function seatPartyResolved(seat) {
   return seat.party === 'I' ? seat.caucus : seat.party;
 }
 
-export function raceLeadParty(race) {
-  return raceLeader(race).party;
+// Positions a `.tooltip` anchored above `anchorEl` (flipping below when there
+// isn't room), nudges it back on-screen, and aims its ::after tail at the
+// anchor's horizontal center. `originEl` is the positioned ancestor the
+// tooltip's left/top are relative to. The on-screen clamp bounds X by the
+// viewport by default; the map passes clampWithinOrigin because its
+// #map-wrap is narrower than the viewport. Shared by app.js and map.js.
+export function positionTooltip(tipEl, anchorEl, originEl, { gap = 6, clampWithinOrigin = false } = {}) {
+  const originRect = originEl.getBoundingClientRect();
+  const anchorRect = anchorEl.getBoundingClientRect();
+  const centerX = anchorRect.left + anchorRect.width / 2 - originRect.left;
+
+  tipEl.classList.remove('below');
+  tipEl.style.left = centerX + 'px';
+  tipEl.style.top = (anchorRect.top - gap - originRect.top) + 'px';
+
+  const spaceAbove = anchorRect.top;
+  const spaceBelow = window.innerHeight - anchorRect.bottom;
+  if (spaceAbove < tipEl.getBoundingClientRect().height + gap && spaceBelow > spaceAbove) {
+    tipEl.classList.add('below');
+    tipEl.style.top = (anchorRect.bottom + gap - originRect.top) + 'px';
+  }
+
+  const margin = 8;
+  const minX = clampWithinOrigin ? originRect.left + margin : margin;
+  const maxX = clampWithinOrigin ? originRect.right - margin : window.innerWidth - margin;
+  const r = tipEl.getBoundingClientRect();
+  let dx = 0, dy = 0;
+  if (r.left < minX) dx = minX - r.left;
+  else if (r.right > maxX) dx = maxX - r.right;
+  if (r.top < margin) dy = margin - r.top;
+  else if (r.bottom > window.innerHeight - margin) dy = (window.innerHeight - margin) - r.bottom;
+  if (dx || dy) {
+    tipEl.style.left = (parseFloat(tipEl.style.left) + dx) + 'px';
+    tipEl.style.top = (parseFloat(tipEl.style.top) + dy) + 'px';
+  }
+
+  // Tail against the post-clamp left edge, clamped inside the rounded corners.
+  const tail = 10;
+  const finalRect = tipEl.getBoundingClientRect();
+  const finalLeft = finalRect.left - originRect.left;
+  const tailX = Math.max(tail, Math.min(finalRect.width - tail, centerX - finalLeft));
+  tipEl.style.setProperty('--tail-x', tailX + 'px');
 }
 
 // One entry per state: current/likely control, for the map.
@@ -263,13 +258,10 @@ export function buildStateSummaries(races) {
     let seats, status, party;
     if (race) {
       const otherParty = seatPartyResolved(solids[0]);
-      // Both the toss-up test and the lead party read the three-lane
-      // derivations rather than demProbability directly, so a race with a
-      // material independent classifies the same way it's positioned and
-      // colored. A leading independent falls out as 'split' (it can never
-      // equal otherParty, which is always D or R) -- correct: the delegation
-      // isn't uniformly either party's.
-      const leadParty = raceLeadParty(race);
+      // Toss-up test and lead party both use the three-lane derivations, so a
+      // race classifies the same way it's positioned and colored. A leading
+      // independent falls out as 'split' (never equals otherParty).
+      const leadParty = raceLeader(race).party;
       if (isTossUp(raceAxisProb(race))) {
         status = 'tossup';
       } else {
