@@ -133,10 +133,10 @@ practical stuff hit while working on it.
   the script being broken — check the run's own failure-rate output first.
 - Before running `script.py` against the real repo paths, check `git
   status`/`but status` for uncommitted changes to `web/live-senate-data.json`
-  — other agents' in-progress UI work can be mid-edit on that exact file.
-  Validate first with `--output`/`--snapshot-dir` pointed at a scratch path
-  (real network calls, no risk to the tracked file), then only point at the
-  real defaults once the working tree is confirmed clear there.
+  — other agents' in-progress UI work can be mid-edit on that exact file. If
+  the working tree is clear there, just run against the real defaults; a bad
+  pull can be reverted from git state (and the >25% failure gate above
+  already blocks the worst case).
 - Kalshi quirk baked into `scripts/event_ticker_map.json`: the
   `SENATELA-26` event ticker actually carries **Kentucky's** markets (a
   labeling bug on Kalshi's side); real Louisiana is `KXSENATELA-26NOV`.
