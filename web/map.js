@@ -88,10 +88,8 @@ function tooltipHtml(summary, name) {
   return html;
 }
 
-// Kicked off at module-eval time (not lazily on the first renderMap call) so
-// the ~115KB topology download overlaps with app.js's data fetch and initial
-// seat-bar render instead of queuing behind them. index.html also preloads it.
-const topologyPromise = fetch('./vendor/us-states-10m.json').then(r => r.json());
+// Should have been preloaded from index.html
+const topologyPromise = fetch('./vendor/us-states-simplified.json').then(r => r.json());
 function loadTopology() {
   return topologyPromise;
 }
