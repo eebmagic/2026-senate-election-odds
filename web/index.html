@@ -31,11 +31,7 @@
 <link rel="icon" href="favicon/favicon-16.png" sizes="16x16" type="image/png">
 <link rel="apple-touch-icon" href="favicon/apple-touch-icon.png">
 
-<!-- The choropleth geometry isn't referenced until map.js runs (deep in the
-     app.js module graph), so preload it here to overlap with d3 + app.js
-     instead of it starting a request only after the seat bar has rendered.
-     crossorigin (bare) so this matches map.js's same-origin fetch() and the
-     browser reuses it rather than firing a second request. -->
+<!-- Load the geometry file early before rendering starts -->
 <link rel="preload" href="./vendor/us-states-simplified.json" as="fetch" crossorigin>
 <style>
   body { margin: 0; background: #faf8f4; font-family: Helvetica, Arial, sans-serif; color: #211f1c; }
