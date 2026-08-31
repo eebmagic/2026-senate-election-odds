@@ -89,9 +89,12 @@ function tooltipHtml(summary, name) {
 }
 
 // Kicked off at module-eval time (not lazily on the first renderMap call) so
-// the ~115KB topology download overlaps with app.js's data fetch and initial
-// seat-bar render instead of queuing behind them. index.html also preloads it.
-const topologyPromise = fetch('./vendor/us-states-10m.json').then(r => r.json());
+// the topology download overlaps with app.js's data fetch and initial seat-bar
+// render instead of queuing behind them. index.html also preloads it.
+// The file is a simplified build (scripts/build_state_topology.sh) -- the full
+// us-atlas 10m detail costs ~600ms of d3.geoPath work per load for no visible
+// gain at this render size.
+const topologyPromise = fetch('./vendor/us-states-simplified.json').then(r => r.json());
 function loadTopology() {
   return topologyPromise;
 }
