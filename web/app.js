@@ -14,6 +14,8 @@ import {
   raceAxisProb,
   raceLeader,
   raceHasPendingPrimary,
+  applyRaceOverrides,
+  upcomingPrimaryLabel,
   STRONG_LEAN,
   isTouchDevice,
   HIDE_DELAY_MS,
@@ -211,7 +213,7 @@ function wireTooltip(containerEl, tooltipEl) {
   return { bindHover, bindLink, hide };
 }
 
-function buildRaceTooltip(r) {
+function buildRaceTooltip(r, fetchedAt) {
   // Rows sorted highest-probability first, so order matches who's ahead.
   const rows = [
     { label: r.demCandidate + (r.demPrimaryPending ? ' (primary TBD)' : ''), party: 'D', pct: fmtPct(r.demProbability), probability: r.demProbability },
@@ -221,12 +223,16 @@ function buildRaceTooltip(r) {
     r.otherTickers.forEach(o => rows.push({ label: o.candidate + ' (I)', party: '', pct: fmtPct(o.probability), probability: o.probability }));
   }
   rows.sort((a, b) => b.probability - a.probability);
+  // Scheduled primary date, prepended after the sort so it sits above the
+  // candidate rows without disturbing their probability order.
+  const primaryLabel = upcomingPrimaryLabel(r.state, fetchedAt);
+  if (primaryLabel) rows.unshift({ label: 'Primary', value: primaryLabel });
   let title = (STATE_NAMES[r.state] || r.state) + (r.raceType === 'special' ? ' — special election' : '');
   if (r.stale) title += ' (as of ' + formatDate(r.staleSince) + ')';
   return { title, rows, href: r.kalshiUrl };
 }
 
-function makeContestedSeg(r) {
+function makeContestedSeg(r, fetchedAt) {
   // Label = the front-runner across all three lanes (raceLeader); color and
   // bar slot come from that same number mirrored onto the leader's side
   // (raceAxisProb). See senate-shared.js for why one number drives both.
@@ -241,7 +247,7 @@ function makeContestedSeg(r) {
     leadParty: leader.party,
     showIndependentMark: isMaterialIndependent(r),
     showPendingMark: raceHasPendingPrimary(r),
-    tooltip: buildRaceTooltip(r)
+    tooltip: buildRaceTooltip(r, fetchedAt)
   };
 }
 
@@ -328,7 +334,7 @@ function computeVals(data) {
   const dSolids = SOLID_SEATS.filter(s => seatPartyResolved(s) === 'D').sort((a, b) => a.state.localeCompare(b.state));
   const rSolids = SOLID_SEATS.filter(s => seatPartyResolved(s) === 'R').sort((a, b) => a.state.localeCompare(b.state));
   const contested = [...races].sort((a, b) => raceAxisProb(b) - raceAxisProb(a));
-  const segments = contested.map(makeContestedSeg);
+  const segments = contested.map(r => makeContestedSeg(r, data.fetchedAt));
 
   const demSolidCount = dSolids.length;
   const repSolidCount = rSolids.length;
@@ -576,7 +582,7 @@ function render(data) {
   window.__mark('renderWideBar');
   renderNarrowBar(vals);
   window.__mark('renderNarrowBar');
-  renderMap(vals.races);
+  renderMap(vals.races, data.fetchedAt);
   window.__mark('renderMap() sync return');
 }
 
@@ -599,6 +605,7 @@ async function main() {
     window.__mark('live-data body read');
     const data = JSON.parse(txt);
     window.__mark('live-data JSON.parse');
+    data.races = applyRaceOverrides(data.races || []);
     render(data);
   } catch (err) {
     showError(err);
