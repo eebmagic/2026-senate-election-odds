@@ -95,6 +95,7 @@ function loadTopology() {
 }
 
 export async function renderMap(races) {
+  window.__mark?.('renderMap: enter');
   const summaries = buildStateSummaries(races);
   const byPostal = {};
   summaries.forEach(s => { byPostal[s.state] = s; });
@@ -105,11 +106,15 @@ export async function renderMap(races) {
   const wrap = document.getElementById('map-wrap');
 
   svg.selectAll('*').remove();
+  window.__mark?.('renderMap: buildStateSummaries + clear');
 
   const topology = await loadTopology();
+  window.__mark?.('renderMap: topology ready (awaited)');
   const geo = topojson.feature(topology, topology.objects.states);
+  window.__mark?.('renderMap: topojson.feature');
   const projection = d3.geoAlbersUsa().fitSize([960, 600], geo);
   const path = d3.geoPath().projection(projection);
+  window.__mark?.('renderMap: projection + geoPath');
 
   // Deferred hide so the cursor can cross the gap between a state and its
   // tooltip to reach the "Kalshi" link without the tooltip vanishing en route.
@@ -212,4 +217,10 @@ export async function renderMap(races) {
       if (!wrap.contains(event.target)) hide();
     });
   }
+
+  window.__mark?.('renderMap: DOM build done');
+  requestAnimationFrame(() => {
+    window.__mark?.('first paint after renderMap (rAF)');
+    window.__perfReport?.();
+  });
 }
