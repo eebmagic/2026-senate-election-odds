@@ -6,9 +6,7 @@
 <title>2026 U.S. Senate Races</title>
 <meta name="description" content="Live Kalshi prediction-market odds for every 2026 U.S. Senate race, as a chamber-control seat projection and a state-by-state map.">
 
-<!-- Link-preview / social cards (iMessage, Slack, X/Twitter, etc.). og:image
-     must be an absolute URL; the site is served from the GitHub Pages project
-     subpath, so the full https:// path is spelled out here. preview.jpg is
+<!-- Link-preview / social cards. og:image must be absolute; preview.jpg is
      regenerated on each data refresh (scripts/build_preview_image.py). -->
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="2026 U.S. Senate Races">
@@ -62,9 +60,7 @@
   .gauge-seg.rep { background: #b3372c; justify-content: flex-end; padding-right: 18px; }
   .gauge-divider { position: absolute; left: 50%; top: -8px; bottom: -8px; width: 2px; background: #211f1c; transform: translateX(-1px); pointer-events: none; }
   .gauge-caption { font-size: 12px; color: #5b574f; margin-top: 8px; }
-  /* Href comes from controlsMarket.kalshiUrl at render time (renderGauge in
-     app.js), so it tracks the event ticker in the data rather than being
-     hardcoded here; hidden until that href is set. */
+  /* Href set at render time (renderGauge in app.js); hidden until then. */
   .gauge-header { display: flex; align-items: baseline; gap: 10px; }
   .gauge-source { display: none; font-size: 12px; }
   .gauge-source[href] { display: inline-block; }
@@ -74,11 +70,8 @@
   .spectrum-header { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 12px; flex-wrap: wrap; gap: 8px; }
 
   .bar-wrap-wide { position: relative; height: 108px; width: 100%; padding-top: 20px; box-sizing: border-box; }
-  /* Height is deliberately shorter than the .bar-wrap-wide padding band (20px):
-     the majority line's stub rises 8px above the bar into that band, so a
-     full-height callout box centered its text right where the line starts and
-     the "50 seats" label collided with it. 10px lifts the text clear of the
-     stub. */
+  /* height 10px (< the 20px padding band): keeps "50 seats" clear of the
+     majority line's 8px stub, which rises into that band. */
   .callout { position: absolute; top: 0; height: 10px; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; white-space: nowrap; text-align: center; pointer-events: none; transform: translateX(-50%); }
   .bar-wide { position: relative; height: 88px; width: 100%; display: flex; border-radius: 4px; overflow: hidden; }
   .solid-block { height: 100%; cursor: pointer; }
@@ -90,63 +83,43 @@
   .seg-state { font-size: 11px; font-weight: 700; letter-spacing: 0.02em; text-align: center; }
   .seg-pct { font-size: 9px; font-weight: 600; text-align: center; }
   .seg-party { font-size: 8px; font-weight: 700; text-align: center; }
-  /* Hover cue for the contested-race links: the global `a:hover` rule below
-     switches text to a dark blue, which would fail the WCAG AA contrast fix
-     just applied to these labels' white-on-colored-background text (see
-     contrast/contested-label-color). Keep the color and use extra boldness
-     as the hover affordance instead. */
+  /* Hover cue for contested-race links: keep white text (the global a:hover
+     blue fails WCAG AA on the segment fills) and use weight as the affordance. */
   .seg-wide:hover, .seg-narrow:hover { color: #fff; }
   .seg-wide:hover .seg-state, .seg-narrow:hover .seg-state,
   .seg-wide:hover .seg-pct, .seg-narrow:hover .seg-pct,
   .seg-wide:hover .seg-party, .seg-narrow:hover .seg-party { font-weight: 900; }
-  /* Marks a race with a notable (>10%) independent candidate. A gold sliver
-     along the segment edge used to read as a border/rendering artifact and
-     needed its own color key in the legend; an asterisk is the conventional
-     "see the caveat" mark and survives being shrunk down at narrow widths.
-     Cream glyph with a dark halo so it clears WCAG contrast against the
-     whole blue->purple->red segment scale, and it's placed clear of the
-     centered seg-label stack in both layouts. */
+  /* Marks a race with a notable (>10%) independent. Cream glyph + dark halo
+     for WCAG contrast across the whole blue->purple->red segment scale,
+     placed clear of the centered seg-label stack. */
   .ind-mark { font-size: 15px; font-weight: 700; line-height: 1; color: #faf8f4; text-shadow: 0 0 2px rgba(33,31,28,0.95), 0 0 4px rgba(33,31,28,0.6); pointer-events: none; }
   .ind-mark-h { position: absolute; top: 2px; left: 50%; transform: translateX(-50%); }
-  /* Badge marking "primary not yet decided" -- a plain page-colored sliver
-     used to read as a rendering artifact rather than an intentional status
-     marker, so this is a small filled "?" badge with its own border instead,
-     visible against every segment fill color. Weight/size matches the ★
-     special-election marker style (see .special-mark). */
+  /* "Primary not yet decided": a filled "?" badge with a border so it reads
+     as a status marker, not a rendering artifact, against every fill color. */
   .pending-mark-h { position: absolute; bottom: 4px; left: 50%; transform: translateX(-50%); }
   .majority-line-wide { position: absolute; top: 12px; bottom: -8px; width: 2px; background: #211f1c; transform: translateX(-1px); pointer-events: none; }
-  /* Whitespace break separating each Strong D/R group from the lean-and-tossup
-     races. It's a flex sibling of the segments (grow set inline from
-     GROUP_GAP_UNITS in app.js) rather than a margin, so the group brackets and
-     the leans divider below can be positioned with the same unit math the
-     segments themselves are laid out with. Painted page-colored rather than
-     left transparent because .bar-wide is a rounded, overflow-hidden box that
-     may pick up a background of its own later. */
+  /* Whitespace break between a Strong D/R group and the middle. A flex
+     sibling of the segments (grow set inline from GROUP_GAP_UNITS in app.js),
+     not a margin, so brackets and the leans divider share the segments' unit
+     math. Painted page-colored, not transparent. */
   .seg-gap-wide { height: 100%; background: #faf8f4; }
-  /* Marker band under the wide bar. margin-top clears the 8px stub the
-     majority line drops below the bar, so the two never overlap even when the
-     leans divider lands a segment or two away from the 50-seat line. */
+  /* Marker band under the wide bar; margin-top clears the majority line's
+     8px stub. */
   .lean-band-wide { position: relative; width: 100%; height: 30px; margin-top: 10px; }
   .strong-group { position: absolute; top: 0; }
   .strong-group.dem { color: #2f5aa8; }
   .strong-group.rep { color: #b3372c; }
-  /* Open-bottomed bracket: it reads as pointing up at the run of segments it
-     spans. currentColor keeps it in step with the party color on .strong-group. */
+  /* Open-bottomed bracket, pointing up at the segments it spans. */
   .strong-bracket { height: 6px; border: 2px solid currentColor; border-bottom: none; border-radius: 2px 2px 0 0; box-sizing: border-box; }
   .strong-label { margin-top: 3px; text-align: center; font-size: 11px; font-weight: 700; white-space: nowrap; }
-  /* The leans divider is deliberately quieter than .majority-line-wide -- 1px,
-     ink-soft, and confined to the band instead of crossing the bar -- because
-     the two can land within a couple of segments of each other and the 50-seat
-     line is the more important of the two. */
+  /* Quieter than .majority-line-wide (1px, ink-soft, band-only): the two can
+     land close together and the 50-seat line is the more important one. */
   .lean-mark { position: absolute; top: -10px; width: 1px; transform: translateX(-0.5px); }
-  /* Tall enough to close the band's 10px margin and meet the bottom edge of
-     the bar -- a tick floating in the whitespace reads as a stray artifact
-     rather than a divider at a specific point in the ordering. */
+  /* Tall enough to meet the bar's bottom edge, so it reads as a divider at a
+     point in the ordering rather than a stray tick. */
   .lean-tick { display: block; width: 1px; height: 20px; background: #5b574f; }
-  /* The labels (and their arrows) carry the party colors the "not up" blocks
-     and the Strong D/R brackets use, so every marker naming a side of the
-     bar is keyed the same way. The tick itself stays ink-soft -- it's a
-     divider, not a party marker. */
+  /* Party-colored like the "not up" blocks and Strong brackets, so every
+     side-naming marker is keyed alike; the tick itself stays ink-soft. */
   .lean-label { position: absolute; top: 22px; font-size: 10px; font-weight: 700; white-space: nowrap; }
   .lean-label.lean-d { right: 5px; color: #2f5aa8; }
   .lean-label.lean-r { left: 5px; color: #b3372c; }
@@ -154,36 +127,24 @@
   .bar-wrap-narrow { display: none; justify-content: center; padding-right: 78px; box-sizing: border-box; }
   @media (max-width: 719px) {
     .bar-wrap-wide { display: none; }
-    /* The marker band is a sibling of .bar-wrap-wide rather than a child (it
-       has to sit clear of the majority line's stub), so it needs its own half
-       of the wide/narrow swap. */
+    /* Sibling of .bar-wrap-wide, so it needs its own half of the swap. */
     .lean-band-wide { display: none; }
     .bar-wrap-narrow { display: flex; }
-    /* The not-up blocks get their height from an inline flex-grow proportional
-       to seat count (see app.js), which works for the wide bar because its
-       track height is fixed regardless of proportions. In the narrow stacked
-       layout the track's *height* is what's being divided up, so a solid
-       party's ~30 "not up" seats can stretch into a tall, empty-looking
-       rectangle. Cap the block's height instead of letting it grow, and let
-       the contested segment list absorb the freed space. !important is
-       needed to win over the inline flex-grow style. */
+    /* The not-up blocks flex-grow by seat count (app.js). In this stacked
+       layout that would stretch ~30 seats into a tall empty rectangle, so
+       cap the height and let the segment list absorb the freed space.
+       !important beats the inline flex-grow. */
     .solid-block-narrow { flex: 0 0 60px !important; max-height: 60px; }
     .contested-wrap-narrow { flex: 1 1 auto !important; }
   }
-  /* Between the mobile stacked list (<=719px) and the point where the wide
-     seat bar has room for full-size per-segment labels (>=1024px), segments
-     are too narrow for an 11px state abbreviation without it running into
-     neighboring segments. Scale the abbreviation down instead of hiding it;
-     overflow:hidden on the segment is a safety net in case a label still
-     doesn't fit. */
+  /* 720-1023px: segments too narrow for an 11px abbreviation, so scale it
+     down rather than hide it. overflow:hidden is a safety net. */
   .seg-wide { overflow: hidden; }
   @media (min-width: 720px) and (max-width: 1023px) {
     .seg-wide .seg-state { font-size: 7px; letter-spacing: 0; }
   }
-  /* Height comes from the contents (the 900px .bar-track-narrow plus the two
-     "not up" captions) rather than a fixed figure -- a hardcoded height
-     over-allocated by ~43px, which showed up as dead space between the bar
-     and the legend below it. */
+  /* No fixed height -- it comes from the contents, so there's no dead space
+     between the bar and the legend. */
   .bar-inner-narrow { position: relative; width: 100%; max-width: 300px; }
   .solid-caption { text-align: center; font-size: 11px; font-weight: 700; }
   .solid-caption.dem { color: #1c3f7a; margin-bottom: 6px; }
@@ -201,111 +162,76 @@
   .pending-mark-v { position: absolute; top: 50%; right: 4px; transform: translateY(-50%); }
   .majority-line-narrow { position: absolute; left: -8px; right: -8px; height: 2px; background: #211f1c; transform: translateY(-1px); pointer-events: none; }
   .majority-label-narrow { position: absolute; right: -8px; transform: translate(100%, -50%); font-size: 10px; font-weight: 700; color: #211f1c; white-space: nowrap; pointer-events: none; padding-left: 4px; }
-  /* Narrow counterpart of .seg-gap-wide. The stacked layout has no horizontal
-     gutter to spare on the left (the right one is already carrying the
-     "50 seats" label), so the group names ride inside the break itself. */
+  /* Narrow counterpart of .seg-gap-wide: no left gutter to spare, so the
+     group names ride inside the break itself. */
   .seg-gap-narrow { width: 100%; background: #faf8f4; display: flex; align-items: center; justify-content: center; gap: 12px; }
   .gap-label { font-size: 9px; font-weight: 700; letter-spacing: 0.02em; white-space: nowrap; }
   .gap-label.dem { color: #2f5aa8; }
   .gap-label.rep { color: #b3372c; }
-  /* Unlike .majority-line-narrow this stops at the bar's edge instead of
-     crossing it: at 1px it would be lost among the cream segment borders, and
-     darkening it enough to read over the segment fills would make the quieter
-     of the two dividers the louder one. A stub out into the gutter, joining
-     the bar to its labels, is the vertical equivalent of the wide bar's tick
-     sitting below the track. */
+  /* Stops at the bar's edge rather than crossing it (a 1px line would be lost
+     among the cream segment borders); a stub into the gutter is the vertical
+     equivalent of the wide bar's tick below the track. */
   .lean-line-narrow { position: absolute; left: 100%; width: 8px; height: 1px; background: #5b574f; pointer-events: none; }
-  /* Shares the right gutter with the "50 seats" label. The two lines sit at
-     least a segment apart vertically and these labels are stacked clear of the
-     divider itself, so they don't collide. */
+  /* Shares the right gutter with the "50 seats" label; the two sit far enough
+     apart vertically not to collide. */
   .lean-labels-narrow { position: absolute; left: calc(100% + 11px); transform: translateY(-50%); display: flex; flex-direction: column; gap: 3px; pointer-events: none; }
   .lean-labels-narrow .lean-label { position: static; }
 
   .legend { display: flex; gap: 22px; flex-wrap: wrap; margin-top: 14px; font-size: 12px; color: #5b574f; }
   .legend-item { display: flex; align-items: center; gap: 6px; }
   .swatch { display: inline-block; }
-  /* Legend chip for the asterisk: the same glyph on a segment color, so the
-     key looks like what's actually drawn on the bar (a bare cream asterisk
-     would vanish against the page background). Uses COLORS.rep, which is
-     what the only currently-flagged race (NE) is actually shaded. */
+  /* Legend chip: the asterisk on a segment-colored tile (a bare cream glyph
+     would vanish on the page background). #b3372c = COLORS.rep, matching the
+     only currently-flagged race (NE). */
   .swatch.ind { position: relative; width: 14px; height: 14px; border-radius: 2px; background: #b3372c; }
   .swatch.ind .ind-mark { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -24%); }
 
   /* Tooltip (shared by spectrum + map) */
   .tooltip { position: absolute; pointer-events: none; background: #211f1c; color: #faf8f4; padding: 10px 13px; border-radius: 4px; font-size: 12.5px; line-height: 1.5; min-width: 150px; max-height: 260px; overflow-y: auto; overflow-x: hidden; box-shadow: 0 8px 20px rgba(0,0,0,0.28); z-index: 5; transform: translate(-50%, -100%); display: none; }
-  /* The seat-bar tooltips (wide + narrow) are row-anchored a few pixels off
-     their trigger rather than pinned under the cursor (see
-     positionAboveOrBelowRow() in app.js), so the cursor has to actually
-     cross onto the tooltip box to keep it open -- unlike the map tooltip,
-     which stays cursor-adjacent. All three need to actually receive
-     pointer input though: the seat-bar ones for hover (and, for the
-     scrollable long-list variant, wheel/touch scroll input) via the
-     mouseenter/mouseleave handling in app.js's wireTooltip(); the map one so
-     its own "Kalshi" hint link (see tooltipHtml() in map.js) is reachable --
-     on touch, where the state shape deliberately doesn't navigate, that
-     in-tooltip link is the only way to get to Kalshi at all. So none of the
-     three can stay pointer-events:none per the base rule above. */
+  /* All three override the base pointer-events:none: the seat-bar ones so the
+     cursor can cross onto the box (hover, and scroll for the long-list
+     variant); the map one so its "Kalshi" hint link is reachable, which on
+     touch is the only route to Kalshi. */
   #tooltip-wide, #tooltip-narrow, #map-tooltip { pointer-events: auto; }
   .tooltip.scrollable { scrollbar-gutter: stable; }
-  /* Keep the scrollbar itself visible as a hint that the list scrolls,
-     rather than relying on the OS's default overlay-scrollbar behavior
-     (which on most platforms only draws it during an active scroll/hover). */
+  /* Keep the scrollbar visible as a hint that the list scrolls, rather than
+     relying on OS overlay-scrollbar behavior. */
   .tooltip.scrollable { scrollbar-width: thin; scrollbar-color: rgba(250,248,244,0.35) transparent; }
   .tooltip.scrollable::-webkit-scrollbar { width: 8px; }
   .tooltip.scrollable::-webkit-scrollbar-track { background: transparent; }
   .tooltip.scrollable::-webkit-scrollbar-thumb { background: rgba(250,248,244,0.35); border-radius: 4px; }
   .tooltip.scrollable::-webkit-scrollbar-thumb:hover { background: rgba(250,248,244,0.5); }
-  /* Row-anchored tooltips (both the wide and narrow seat-bar layouts): top/left
-     mark the row's top-center by default, so the tooltip sits above it
-     (translate -100% on Y) at a stable height regardless of which cell in
-     the row triggered it. When there's no room above, .below is added and
-     top/left instead mark the row's bottom-center, so the tooltip sits
-     below it. */
+  /* Row-anchored: by default top/left mark the row's top-center and the
+     tooltip sits above (translateY -100%); .below flips it under when there's
+     no room above. */
   .tooltip.below { transform: translate(-50%, 0); }
-  /* Visual anchor linking an open tooltip back to its source cell/state: a
-     small triangular tail pointing at whatever opened it, aimed horizontally
-     via --tail-x (set in positionAboveOrBelowRow() in app.js and
-     positionTooltip() in map.js). The scrollable long-list variant has no
-     single source cell to point at, so it gets no tail. */
+  /* Triangular tail pointing at the cell/state that opened the tooltip, aimed
+     via --tail-x (set in app.js / map.js). The scrollable long-list variant
+     has no single source cell, so it gets no tail. */
   #tooltip-wide::after, #tooltip-narrow::after, #map-tooltip::after { content: ''; position: absolute; left: var(--tail-x, 50%); transform: translateX(-50%); border: 6px solid transparent; }
   #tooltip-wide:not(.below)::after, #tooltip-narrow:not(.below)::after, #map-tooltip:not(.below)::after { top: 100%; border-top-color: #211f1c; }
   #tooltip-wide.below::after, #tooltip-narrow.below::after, #map-tooltip.below::after { bottom: 100%; border-bottom-color: #211f1c; }
   #tooltip-wide.scrollable::after, #tooltip-narrow.scrollable::after { display: none; }
-  /* The tail renders just outside the box; let it show through instead of
-     being clipped by the base rule's overflow (irrelevant here anyway --
-     these tooltip variants never approach the 260px cap). */
+  /* Let the tail (just outside the box) show through the base overflow. */
   #tooltip-wide:not(.scrollable), #tooltip-narrow:not(.scrollable), #map-tooltip { overflow: visible; }
   .tooltip .title { font-weight: 700; font-size: 13.5px; margin-bottom: 3px; white-space: nowrap; }
-  /* Rows share one CSS grid (label column + value column) instead of each
-     row flexing independently -- a shared grid gives every row's value
-     column the same width (the widest value in the tooltip), so a party
-     letter always sits the same distance from the label regardless of how
-     many digits that row's own percentage happens to have (e.g. "R 1%" vs
-     "D 99%" no longer staggers the letters -- see .party/.pct below). */
+  /* One shared grid, so every row's value column is the same width and the
+     party letters don't stagger by percentage digit count (see .party/.pct). */
   .tooltip .rows { display: grid; grid-template-columns: 1fr auto; column-gap: 14px; font-variant-numeric: tabular-nums; white-space: nowrap; }
-  /* Sub-heading inside a tooltip that separates unrelated groups of rows,
-     e.g. the map tooltip's "not up in 2026" senator vs. the actual 2026
-     race candidates -- see tooltipHtml() in map.js. Spans both grid columns
-     since it isn't part of the label/value pairing. */
+  /* Sub-heading separating row groups (map tooltip's "not up" senator vs.
+     race candidates); spans both columns. */
   .tooltip .group-label { grid-column: 1 / -1; font-size: 10.5px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.03em; color: #9a958c; margin: 6px 0 2px; white-space: nowrap; }
   .tooltip .group-label:first-of-type { margin-top: 2px; }
-  /* The row itself renders no box of its own -- display:contents promotes
-     its label/value spans directly into the shared .rows grid above, which
-     is what makes the value column line up across rows. */
+  /* display:contents promotes the label/value spans into the shared .rows
+     grid, which is what makes the value column line up. */
   .tooltip .row { display: contents; }
   .tooltip .row .value { color: #cfcac0; text-align: right; }
-  /* Race rows split their value into a party letter and a percentage (see
-     rowValueHtml() in app.js / tooltipHtml() in map.js) so the two can be
-     pinned to opposite ends of the (now fixed-width) value column: the
-     letter flush to the label side, the percentage flush to the tooltip's
-     edge. */
+  /* Split value: party letter flush to the label side, percentage flush to
+     the edge of the fixed-width value column. */
   .tooltip .row .value.split { display: flex; justify-content: space-between; gap: 4px; }
-  /* Now a real <a> (see tooltipHtml() in app.js) -- block + explicit color
-     override the global `a`/`a:hover` rules (blue, meant for the page body)
-     so it keeps reading as muted tooltip text. The whole line is clickable,
-     but only the "Kalshi ↗" span (see .hint-link below) is underlined, so
-     the underline reads as pointing at the destination rather than
-     decorating the whole instruction sentence. */
+  /* A real <a>; block + explicit color override the global a/a:hover (page
+     blue) so it stays muted tooltip text. Only the "Kalshi ↗" span is
+     underlined, pointing at the destination rather than the whole sentence. */
   .tooltip .hint { display: block; margin-top: 6px; padding-top: 6px; border-top: 1px solid rgba(250,248,244,0.25); font-size: 11px; color: #9a958c; white-space: nowrap; text-decoration: none; }
   .tooltip .hint .hint-link { text-decoration: underline; }
   .tooltip .hint:hover { color: #cfcac0; }
@@ -316,10 +242,8 @@
   #map-svg { width: 100%; height: 100%; display: block; }
   path.state { stroke: #faf8f4; stroke-width: 1; }
   path.state:hover { stroke: #211f1c; stroke-width: 1.5; }
-  /* Only states with a contested 2026 race actually link out to Kalshi (see
-     map.js) -- cursor:pointer is scoped to those so the affordance doesn't
-     overpromise on solid/uncontested states, which have no single race to
-     link to. */
+  /* Scoped to linked states (see map.js) so the pointer cursor doesn't
+     overpromise on uncontested ones. */
   path.state.linked { cursor: pointer; }
 </style>
 </head>
@@ -369,9 +293,8 @@
       <div id="bar-narrow-container"></div>
 
       <div class="legend">
-        <!-- Only the two entries that aren't self-evident from the bar
-             itself: the blue->purple->red gradient reads as a party scale
-             without a key, so its four swatches were dropped. -->
+        <!-- Only the non-obvious marks; the gradient reads as a party scale
+             without a key. -->
         <div class="legend-item"><span class="swatch ind" aria-hidden="true"><span class="ind-mark">&#42;</span></span>Independent polling above 10%</div>
         <div class="legend-item"><span class="pending-badge">?</span>Primary not yet decided</div>
       </div>

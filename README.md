@@ -5,7 +5,6 @@ A static page showing Kalshi prediction-market odds for the 2026 U.S. Senate rac
 ## Layout
 
 ```
-design_handoff_senate_tracker/   design reference (spec + prototype, not shipped code — see its own README)
 script.py                        fetches Kalshi + writes web/live-senate-data.json (see "Rebuild logic")
 scripts/
   event_ticker_map.json          event_ticker -> { state, raceType }, checked-in, changes rarely
@@ -19,13 +18,13 @@ web/                             the published site (static, no build step)
 
 ## UI
 
-Three components on one page, ported from `design_handoff_senate_tracker`'s design spec to plain JS + d3 (no framework, no bundler — matches the rest of this repo):
+Three components on one page, in plain JS + d3 (no framework, no bundler — matches the rest of this repo):
 
 - **Chamber control gauge** — a two-segment bar showing market-implied Democratic vs. Republican probability of Senate control.
 - **Seat spectrum bar** — all 100 seats on one axis: the 65 seats not up in 2026 collapsed into two solid blocks at each end, the 35 contested races in between sorted by Democratic win probability, with a majority line at the 50/51-seat boundary. Switches between a wide (≥720px) and narrow (<720px) layout via a CSS media query.
 - **State map** — a US choropleth (d3-geo + topojson, Albers USA projection) showing combined per-state control, with diagonal stripes marking a split delegation or a toss-up race.
 
-Both the spectrum bar and the map show tooltips on hover (candidate names, odds, "(primary TBD)" markers where a party's primary hasn't resolved yet, independent candidates polling above 10%). Colors, spacing, and thresholds follow `design_handoff_senate_tracker/README.md`'s design tokens.
+Both the spectrum bar and the map show tooltips on hover (candidate names, odds, "(primary TBD)" markers where a party's primary hasn't resolved yet, independent candidates polling above 10%). Colors, spacing, and thresholds are defined in `web/senate-shared.js` (`COLORS`, `TOSSUP_LOW`/`TOSSUP_HIGH`, `STRONG_LEAN`).
 
 Every contested-race segment in the spectrum bar (wide and narrow layouts alike) links out to that race's actual Kalshi market page. On desktop, hover previews the tooltip and a click opens the link in a new tab. On touch devices (detected via `(hover: none), (pointer: coarse)`) there's no hover, so the first tap on a segment shows the preview instead of navigating; a second tap on that same segment follows the link. Tapping elsewhere dismisses the open preview. The solid D/R blocks aren't linked — no single market backs an aggregate of 34/31 seats.
 
