@@ -2,15 +2,11 @@
 """
 Transform a raw Kalshi discovery dump ({event_ticker: [raw market objects]})
 into the UI-ready live-senate-data.json shape ({ fetchedAt, controlsMarket,
-races, failedStates }, per design_handoff_senate_tracker/README.md).
+races, failedStates }; see the README's "Rebuild logic").
 
 Normally used as a library: script.py imports build() and load_event_map()
-directly and calls them in-memory against a fresh Kalshi pull, writing
-straight to web/live-senate-data.json -- there's no on-disk raw-dump file in
-that path.
-
-This file also runs standalone via its own CLI, for manually rebuilding from
-a raw dump saved to disk (e.g. while debugging a specific run's data):
+and calls them in-memory against a fresh Kalshi pull. Also runs standalone
+via its own CLI to rebuild from a raw dump saved to disk:
 
 Usage: python3 scripts/build_live_data.py --input path/to/dump.json
        python3 scripts/build_live_data.py --input path/to/dump.json --output path/to/out.json
@@ -30,23 +26,17 @@ OUTPUT_PATH = ROOT / "web" / "live-senate-data.json"
 CONTROLS_EVENT_TICKER = "CONTROLS-2026"
 
 # Kalshi lists a generic party name as the "candidate" when that party's
-# primary hasn't resolved yet (e.g. 'Democratic party', 'Republican Party',
-# 'Democratic (DFL) Party' -- casing is inconsistent across events). Checked
-# custom_strike's `politician` id as a cleaner structured signal first, but
-# it's populated inconsistently even for confirmed real candidates (e.g.
-# Ashley Moody in FL), so it isn't reliable. Name matching -- done once here,
-# case-insensitively, rather than by the client on every render -- is still
-# the most accurate signal available in this payload.
+# primary hasn't resolved yet (e.g. 'Democratic party', 'Democratic (DFL)
+# Party' -- casing varies across events). custom_strike's `politician` id
+# would be cleaner but is populated inconsistently even for confirmed
+# candidates, so name matching is the best signal in this payload.
 GENERIC_CANDIDATE_RE = re.compile(r"^(democratic|republican)( \(\w+\))? party$", re.IGNORECASE)
 
-# Most events price one market per party, but a state with no party primaries
-# (Alaska -- see docs/election-processes.md) is priced per *candidate*
-# instead, with every name on the ballot listed. Those events carry a
-# "candidateParties" map in event_ticker_map.json assigning the real
-# contenders to a party lane; everyone at or below this share is a long shot
-# who would otherwise land in the tooltip as a spurious "independent", so
-# they're dropped before normalization and their (rounding-scale) probability
-# is spread across the remaining candidates.
+# A state with no party primaries (Alaska -- see docs/election-processes.md)
+# is priced per *candidate*, listing every name on the ballot. Those events
+# carry a "candidateParties" map in event_ticker_map.json; candidates at or
+# below this share are long shots that would otherwise show as a spurious
+# "independent", so they're dropped before normalization.
 MINOR_CANDIDATE_THRESHOLD = 0.05
 
 
@@ -80,12 +70,11 @@ def outcome_suffix(ticker: str, event_ticker: str) -> str:
 
 
 def kalshi_url(event_ticker: str) -> str:
-    """Kalshi market page URL. Verified live: https://kalshi.com/markets/{series}/{event}
-    (both lowercased) redirects to the canonical page with its human slug filled
-    in -- the middle slug segment isn't required. `series` is the event ticker
-    with its trailing -XX segment (year/suffix) stripped, e.g.
-    'SENATENE-26' -> series 'senatene'. Confirmed this also holds for the
-    KX-prefixed and CONTROLS-2026 tickers."""
+    """Kalshi market page URL. https://kalshi.com/markets/{series}/{event}
+    (lowercased) redirects to the canonical page; the human slug segment
+    isn't required. `series` is the event ticker with its trailing -XX
+    stripped ('SENATENE-26' -> 'senatene'). Holds for the KX-prefixed and
+    CONTROLS-2026 tickers too."""
     series = event_ticker.rsplit("-", 1)[0].lower()
     return f"https://kalshi.com/markets/{series}/{event_ticker.lower()}"
 

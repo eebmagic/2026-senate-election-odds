@@ -16,15 +16,13 @@ written for debugging but web/live-senate-data.json is left on the previous
 good run instead, so one bad pull can never clobber the live site with mostly
 stale/empty data. Pass --force-promote to override that.
 
-The event ticker list is NOT hardcoded here; it's read from the checked-in
-scripts/event_ticker_map.json so this script and the transform step can never
-silently drift out of sync (a state present in one but not the other used to
-be a real, undetected failure mode of the old retry-pass version of this
-script -- see git history).
+The event ticker list is read from the checked-in
+scripts/event_ticker_map.json, not hardcoded here, so the fetch and the
+transform step can't silently drift out of sync.
 
 Note: SENATELA-26 genuinely carries Kentucky's markets (a naming leftover on
-Kalshi's side, not actually Louisiana); real Louisiana is
-KXSENATELA-26NOV. This is encoded in event_ticker_map.json, not here.
+Kalshi's side, not actually Louisiana); real Louisiana is KXSENATELA-26NOV.
+Encoded in event_ticker_map.json, not here.
 
 Usage:
     python3 script.py
@@ -56,14 +54,13 @@ DELAY_BETWEEN_REQUESTS_SECONDS = 2.5
 MAX_RETRIES = 5
 INITIAL_BACKOFF_SECONDS = 3
 
-# Above this fraction of tickers failing, something is systemically wrong
-# (auth change, endpoint moved, network outage) rather than a few markets
-# having a bad day -- worth a non-zero exit so a cron/CI wrapper notices.
+# Above this fraction of tickers failing, treat the run as systemically
+# broken (auth change, endpoint moved, outage): don't promote it to the live
+# file, and exit non-zero so a cron/CI wrapper notices. A few markets having
+# a bad day stays under this and is absorbed by build()'s stale carryforward.
 FAILURE_RATE_ALERT_THRESHOLD = 0.25
 
-# scripts/build_live_data.py isn't a package -- import it directly by path
-# rather than shelling out, now that there's no intermediate file to hand it
-# via CLI.
+# scripts/ isn't a package -- import build_live_data by path.
 sys.path.insert(0, str(ROOT / "scripts"))
 import build_live_data as bld  # noqa: E402
 
@@ -196,9 +193,7 @@ def main():
     if failures:
         print(f"  Failed: {failures}")
 
-    # Previous good output feeds build()'s stale-carryforward logic --
-    # captured before any write this run, whether or not this run ends up
-    # promoted.
+    # Feeds build()'s stale-carryforward; captured before any write this run.
     previous = bld.load_previous_output(args.output)
     output = bld.build(discovery, event_map, previous)
     print(f"\nBuilt {len(output['races'])} races "
@@ -211,9 +206,8 @@ def main():
     now = datetime.now(timezone.utc)
     healthy = failure_rate <= FAILURE_RATE_ALERT_THRESHOLD
 
-    # Every run's output is kept as a snapshot regardless of health; only a
-    # healthy run (or an explicit override) also gets promoted to the stable
-    # `--output` path web/app.js actually reads.
+    # Every run is kept as a snapshot; only a healthy run (or --force-promote)
+    # is also promoted to the stable --output path web/app.js reads.
     snapshot_path = snapshot_path_for(args.snapshot_dir, now)
     bld.write_json_atomic(snapshot_path, output)
     print(f"Wrote {snapshot_path}")
@@ -223,21 +217,13 @@ def main():
         print(f"Promoted it to {args.output}"
               + ("" if healthy else " (--force-promote overrode the failure-rate threshold)"))
     else:
-        # Too many tickers failed to trust this run as the new live data --
-        # keep the previous good web/live-senate-data.json in place.
         print(f"\n{len(failures)}/{len(event_tickers)} tickers failed "
               f"(> {FAILURE_RATE_ALERT_THRESHOLD:.0%} threshold). Did NOT promote to {args.output} "
               f"-- leaving the previous good file in place. Pass --force-promote to override.")
 
     prune_snapshots(args.snapshot_dir, args.keep_snapshots)
 
-    # Non-zero exit lets a cron/CI wrapper alert on a systemic failure
-    # (auth change, endpoint moved, outage) rather than a few markets having
-    # a bad day -- those are expected to be absorbed via build()'s
-    # stale-carryforward logic.
-    if not healthy:
-        return 1
-    return 0
+    return 1 if not healthy else 0
 
 
 if __name__ == "__main__":
