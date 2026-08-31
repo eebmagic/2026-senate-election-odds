@@ -22,6 +22,57 @@ import {
 } from './senate-shared.js';
 import { renderMap } from './map.js';
 
+// --- Load profiler -------------------------------------------------------
+// Lightweight always-on instrumentation: app.js and map.js call window.__mark()
+// at each load phase, and __perfReport() dumps three console tables once the
+// map has painted (per-phase timings, the resource waterfall, and any main-
+// thread long tasks). Kept in the deployed build so timings can be read from a
+// real browser on the live site; re-run window.__perfReport() any time.
+const __P0 = performance.now();
+const __marks = [['app.js eval', __P0]];
+window.__marks = __marks;
+window.__mark = (label) => __marks.push([label, performance.now()]);
+
+// Long tasks (>50ms blocking the main thread) with whatever attribution the
+// browser exposes -- names what stalls a phase. buffered:true replays tasks
+// from before this observer registered where the browser supports it.
+const __longtasks = [];
+window.__longtasks = __longtasks;
+try {
+  new PerformanceObserver((list) => {
+    for (const e of list.getEntries()) {
+      const a = (e.attribution && e.attribution[0]) || {};
+      __longtasks.push({
+        startMs: +e.startTime.toFixed(1),
+        durMs: +e.duration.toFixed(1),
+        container: a.containerType ? `${a.containerType}:${a.containerName || ''}` : e.name,
+        src: a.containerSrc || '',
+      });
+    }
+  }).observe({ type: 'longtask', buffered: true });
+} catch (_) { /* longtask unsupported */ }
+
+window.__perfReport = () => {
+  console.log('%c--- load profile ---', 'font-weight:bold');
+  console.table(__marks.map(([phase, t], i) => ({
+    phase,
+    dMs: i ? +(t - __marks[i - 1][1]).toFixed(1) : 0,
+    tMs: +(t - __P0).toFixed(1),
+  })));
+  const want = /d3\.min|topojson-client|us-states|live-senate-data|\/app\.js|\/map\.js|senate-shared/;
+  console.table(performance.getEntriesByType('resource').filter((e) => want.test(e.name)).map((e) => ({
+    file: e.name.split('/').pop(),
+    startMs: +e.startTime.toFixed(1),
+    durMs: +e.duration.toFixed(1),
+    KB: +(((e.transferSize || e.encodedBodySize) || 0) / 1024).toFixed(1),
+  })));
+  console.log('%clong tasks (>50ms on main thread):', 'font-weight:bold');
+  console.table(__longtasks);
+  const nav = performance.getEntriesByType('navigation')[0];
+  if (nav) console.log(`DCL ${nav.domContentLoadedEventEnd.toFixed(1)}ms  load ${nav.loadEventEnd.toFixed(1)}ms`);
+};
+// --- end load profiler -------------------------------------------------------
+
 const CONTESTED_UNITS = 130;
 
 // Whitespace breaks separating the Strong D / Strong R groups from the
@@ -511,15 +562,22 @@ function renderMeta(vals) {
 }
 
 function render(data) {
+  window.__mark('render() enter');
   document.getElementById('status').style.display = 'none';
   document.getElementById('app').style.display = 'block';
 
   const vals = computeVals(data);
+  window.__mark('computeVals');
   renderMeta(vals);
+  window.__mark('renderMeta');
   renderGauge(vals);
+  window.__mark('renderGauge');
   renderWideBar(vals);
+  window.__mark('renderWideBar');
   renderNarrowBar(vals);
+  window.__mark('renderNarrowBar');
   renderMap(vals.races);
+  window.__mark('renderMap() sync return');
 }
 
 function showError(err) {
@@ -531,9 +589,16 @@ function showError(err) {
 
 async function main() {
   try {
+    window.__mark('main() enter');
     const res = await fetch('./live-senate-data.json', { cache: 'no-store' });
+    window.__mark('live-data fetch headers');
     if (!res.ok) throw new Error('HTTP ' + res.status);
-    const data = await res.json();
+    // res.text() then JSON.parse kept split (rather than res.json()) so the
+    // profiler can tell body delivery apart from parse cost.
+    const txt = await res.text();
+    window.__mark('live-data body read');
+    const data = JSON.parse(txt);
+    window.__mark('live-data JSON.parse');
     render(data);
   } catch (err) {
     showError(err);
