@@ -131,6 +131,41 @@ export function raceHasPendingPrimary(race) {
   return !!(race.demPrimaryPending || race.repPrimaryPending);
 }
 
+// Manual corrections applied to the live data at load time (applyRaceOverrides),
+// for races where Kalshi's market metadata lags a called result. Keyed by
+// state; the listed fields replace the fetched values. Drop an entry once the
+// upstream feed catches up.
+export const RACE_OVERRIDES = {
+  // OK Democratic primary resolved for N'Kiyla Thomas; Kalshi still lists a
+  // generic "Democratic party" placeholder with the primary flagged pending.
+  OK: { demCandidate: "N'Kiyla Thomas", demPrimaryPending: false }
+};
+
+export function applyRaceOverrides(races) {
+  return races.map(r => (RACE_OVERRIDES[r.state] ? { ...r, ...RACE_OVERRIDES[r.state] } : r));
+}
+
+// Scheduled primary dates for 2026 races whose primary hasn't happened yet, as
+// UTC ISO dates. Surfaced in tooltips (upcomingPrimaryLabel) while the data's
+// pull date is still before the primary; remove an entry once it has passed.
+export const UPCOMING_PRIMARIES = {
+  MA: '2026-09-01',
+  NH: '2026-09-08',
+  RI: '2026-09-09',
+  DE: '2026-09-15'
+};
+
+// Short "Sep 8"-style label for `state`'s upcoming primary, or null when none
+// is on file or `fetchedAt` is already on/after it (the primary has happened).
+export function upcomingPrimaryLabel(state, fetchedAt) {
+  const iso = UPCOMING_PRIMARIES[state];
+  if (!iso) return null;
+  const primary = new Date(iso + 'T00:00:00Z');
+  const pulled = new Date(fetchedAt);
+  if (!isNaN(pulled) && pulled >= primary) return null;
+  return primary.toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
+}
+
 export function isMaterialIndependent(race) {
   return !!(race.otherTickers && race.otherTickers.some(t => t.probability > 0.10));
 }

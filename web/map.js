@@ -2,7 +2,7 @@
 // summaries built from the live races array. d3 and topojson-client are
 // loaded globally via <script> tags in index.html (UMD builds), not imported.
 
-import { COLORS, buildStateSummaries, fmtPct, isMaterialIndependent, colorForDemProb, raceAxisProb, isTouchDevice, HIDE_DELAY_MS, escapeHtml, positionTooltip } from './senate-shared.js';
+import { COLORS, buildStateSummaries, fmtPct, isMaterialIndependent, colorForDemProb, raceAxisProb, upcomingPrimaryLabel, isTouchDevice, HIDE_DELAY_MS, escapeHtml, positionTooltip } from './senate-shared.js';
 
 const FIPS_TO_POSTAL = {
   '01': 'AL', '02': 'AK', '04': 'AZ', '05': 'AR', '06': 'CA', '08': 'CO', '09': 'CT', '10': 'DE', '11': 'DC',
@@ -35,7 +35,7 @@ function candidateRowHtml(label, party, pct) {
   return '<div class="row"><span>' + escapeHtml(label) + '</span><span class="value split"><span class="party">' + escapeHtml(party) + '</span><span class="pct">' + escapeHtml(pct) + '</span></span></div>';
 }
 
-function tooltipHtml(summary, name) {
+function tooltipHtml(summary, name, fetchedAt) {
   if (!summary) return '<div class="title">' + escapeHtml(name) + '</div>';
   let html = '<div class="title">' + escapeHtml(name) + '</div>';
   const notUpSeats = summary.seats.filter(seat => !seat.isRace);
@@ -59,6 +59,11 @@ function tooltipHtml(summary, name) {
       rows += '<div class="group-label">2026 race</div>';
     }
     const r = raceSeat.race;
+    // Scheduled primary date, above the candidate rows.
+    const primaryLabel = upcomingPrimaryLabel(r.state, fetchedAt);
+    if (primaryLabel) {
+      rows += rowHtml('Primary', primaryLabel);
+    }
     // Sorted highest-probability first (mirrors buildRaceTooltip() in app.js).
     const candidateRows = [
       { label: r.demCandidate + (r.demPrimaryPending ? ' (TBD)' : ''), party: 'D', pct: fmtPct(r.demProbability), probability: r.demProbability },
@@ -94,7 +99,7 @@ function loadTopology() {
   return topologyPromise;
 }
 
-export async function renderMap(races) {
+export async function renderMap(races, fetchedAt) {
   window.__mark?.('renderMap: enter');
   const summaries = buildStateSummaries(races);
   const byPostal = {};
@@ -139,7 +144,7 @@ export async function renderMap(races) {
     cancelHide();
     tooltip
       .style('display', 'block')
-      .html(tooltipHtml(byPostal[postal], d.properties.name));
+      .html(tooltipHtml(byPostal[postal], d.properties.name, fetchedAt));
     // Anchor to the state's shape, not the cursor -- large/irregular shapes
     // won't always sit under the pointer, but it stops the tooltip chasing
     // the mouse. clampWithinOrigin keeps it inside #map-wrap.
