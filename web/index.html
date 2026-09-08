@@ -33,6 +33,10 @@
 
 <!-- Load the geometry file early before rendering starts -->
 <link rel="preload" href="./vendor/us-states-simplified.json" as="fetch" crossorigin>
+<!-- Start the live-data fetch (Cloudflare R2, via a custom domain on the
+     bucket) in parallel with script eval. Keep in sync with LIVE_DATA_URL in app.js. -->
+<link rel="preconnect" href="https://election-data.ebolton.site" crossorigin>
+<link rel="preload" href="https://election-data.ebolton.site/latest.json" as="fetch" crossorigin>
 <style>
   body { margin: 0; background: #faf8f4; font-family: Helvetica, Arial, sans-serif; color: #211f1c; }
   a { color: #2f5aa8; }

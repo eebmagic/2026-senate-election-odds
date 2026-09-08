@@ -17,7 +17,7 @@ live_data_snapshots/             tracked per-run audit trail, only written on `s
 web/                             the published site (static, no build step)
   index.html / app.js / map.js / senate-shared.js
   vendor/                        d3, topojson-client, us-states-simplified.json (simplified us-atlas topology; see scripts/build_state_topology.sh)
-  live-senate-data.json          last local build (only refreshed by `script.py --write-local`); the deployed UI move is a separate work item
+  live-senate-data.json          stale local build (only written by `script.py --write-local`); the deployed UI reads R2, not this file
 ```
 
 ## UI
@@ -32,7 +32,7 @@ Both the spectrum bar and the map show tooltips on hover (candidate names, odds,
 
 Every contested-race segment in the spectrum bar (wide and narrow layouts alike) links out to that race's actual Kalshi market page. On desktop, hover previews the tooltip and a click opens the link in a new tab. On touch devices (detected via `(hover: none), (pointer: coarse)`) there's no hover, so the first tap on a segment shows the preview instead of navigating; a second tap on that same segment follows the link. Tapping elsewhere dismisses the open preview. The solid D/R blocks aren't linked — no single market backs an aggregate of 34/31 seats.
 
-`app.js` fetches `live-senate-data.json` on load; the page shows a loading state until that resolves and an error state if the fetch fails.
+`app.js` fetches the live data on load from `LIVE_DATA_URL` (the Cloudflare R2 bucket's public `latest.json`; kept in sync with a `<link rel="preload">` in `index.html`); the page shows a loading state until that resolves and an error state if the fetch fails.
 
 ## Rebuild logic
 
@@ -48,8 +48,8 @@ The live data is a generated artifact, not hand-edited. To refresh it, run `pyth
 
 Copy `.env.example` to `.env` (gitignored) and fill in an R2 API token (Cloudflare dashboard → R2 → *Manage R2 API Tokens*, Object Read & Write on the `election-map` bucket): `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET`. Real environment variables override the file, so CI injects these as secrets directly.
 
-**UI URL (for the follow-up work item):** once the bucket has public access — an r2.dev dev domain or a custom domain bound to it — the UI fetches `<public-base>/latest.json`, and history entries live at `<public-base>/snapshots/<fetchedAt>.json` (the `:` in the timestamp needs percent-encoding as `%3A` in a browser fetch; `latest.json` has no such issue). Set `R2_PUBLIC_BASE_URL` in `.env` and `script.py` prints the resolved `latest.json` URL after each run.
+**Public URL:** the UI fetches `latest.json` from a custom domain bound to the bucket, `https://election-data.ebolton.site/latest.json` — set as `LIVE_DATA_URL` in `web/app.js` and preloaded in `web/index.html` (keep the two in sync). History entries live at `<base>/snapshots/<fetchedAt>.json` (the `:` in the timestamp needs percent-encoding as `%3A` in a browser fetch; `latest.json` has no such issue). Set `R2_PUBLIC_BASE_URL` in `.env` and `script.py` prints the resolved URL after each run.
 
-The `web/` HTML/CSS/JS still reads the local `web/live-senate-data.json` — pointing it at R2 is a separate work item.
+The bucket needs a CORS policy allowing `GET` from the site origin (and `http://localhost:*` for local dev) or the browser blocks the cross-origin fetch — configure it in the dashboard under R2 → the bucket → Settings → CORS Policy.
 
 Run it locally with e.g. `python3 -m http.server` from inside `web/`.
