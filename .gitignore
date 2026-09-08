@@ -3,3 +3,9 @@
 senate-election-map-kanban
 
 __pycache__/
+
+# R2 credentials for script.py (see .env.example).
+.env
+
+# wrangler's local account cache -- contains the account id and an email.
+.wrangler/

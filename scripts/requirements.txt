@@ -1,0 +1,5 @@
+# Dependencies for script.py's R2 upload path (scripts/r2_store.py).
+# scripts/build_live_data.py stays stdlib-only and needs none of this;
+# `python3 script.py --write-local` also runs without these installed.
+boto3>=1.34
+python-dotenv>=1.0

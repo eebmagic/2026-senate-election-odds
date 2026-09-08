@@ -5,16 +5,19 @@ A static page showing Kalshi prediction-market odds for the 2026 U.S. Senate rac
 ## Layout
 
 ```
-script.py                        fetches Kalshi + writes web/live-senate-data.json (see "Rebuild logic")
+script.py                        fetches Kalshi + uploads to the R2 bucket (see "Rebuild logic")
 scripts/
   event_ticker_map.json          event_ticker -> { state, raceType }, checked-in, changes rarely
   build_live_data.py             the transform script.py calls: raw discovery dict -> live-senate-data.json shape
+  r2_store.py                    R2 client used by script.py (latest.json + snapshots/), config from .env
+  requirements.txt               script.py's R2 deps (boto3, python-dotenv); build_live_data.py stays stdlib-only
   build_state_topology.sh        regenerates web/vendor/us-states-simplified.json from us-atlas (run rarely)
-live_data_snapshots/             tracked per-run audit trail written by script.py, newest N kept (see --keep-snapshots)
+.env.example                     template for the R2 credentials script.py reads from .env
+live_data_snapshots/             tracked per-run audit trail, only written on `script.py --write-local`
 web/                             the published site (static, no build step)
   index.html / app.js / map.js / senate-shared.js
   vendor/                        d3, topojson-client, us-states-simplified.json (simplified us-atlas topology; see scripts/build_state_topology.sh)
-  live-senate-data.json          generated artifact, fetched by the page at runtime
+  live-senate-data.json          last local build (only refreshed by `script.py --write-local`); the deployed UI move is a separate work item
 ```
 
 ## UI
@@ -33,14 +36,20 @@ Every contested-race segment in the spectrum bar (wide and narrow layouts alike)
 
 ## Rebuild logic
 
-`web/live-senate-data.json` is a generated artifact, not hand-edited. To refresh it, run `python3 script.py`. It:
+The live data is a generated artifact, not hand-edited. To refresh it, run `python3 script.py` (needs `pip install -r scripts/requirements.txt` and an `.env` — see below). It:
 
 1. Fetches every 2026 Senate race's markets from Kalshi (event tickers read from the checked-in `scripts/event_ticker_map.json`, so the fetch list and the transform step can't drift apart) plus the `CONTROLS-2026` chamber-control market, retrying on rate limits/5xx/network errors.
-2. Transforms the result in-memory via `scripts/build_live_data.build()`: normalizes each race's outcome prices to sum to 1.0, derives `demPrimaryPending`/`repPrimaryPending` per race, and computes each race's `kalshiUrl` (`https://kalshi.com/markets/{series}/{event}`, series being the event ticker with its trailing `-XX` stripped — verified live, the human slug segment isn't required for Kalshi's redirect to resolve). Most events price one market per party, so the ticker suffix (`-D`/`-R`) identifies the lane; an event priced per *candidate* instead — Alaska, which has no party primaries at all (see `docs/election-processes.md`) — carries a `candidateParties` map in `scripts/event_ticker_map.json` assigning each real contender to a lane, and candidates at or below 5% are dropped before normalization. If a race's data is missing or unusable, it carries forward that race's last-known-good values from the previous `live-senate-data.json` (flagged `stale`/`staleSince`) rather than ever showing 0% — and lists the state in `failedStates`.
-3. Writes a timestamped copy to `live_data_snapshots/` (an audit trail, pruned to the newest 100 by default), then atomically repoints `web/live-senate-data.json` at it — unless more than 25% of tickers failed this run, in which case the snapshot is written but `web/live-senate-data.json` is left on the previous good run (`--force-promote` overrides).
+2. Transforms the result in-memory via `scripts/build_live_data.build()`: normalizes each race's outcome prices to sum to 1.0, derives `demPrimaryPending`/`repPrimaryPending` per race, and computes each race's `kalshiUrl` (`https://kalshi.com/markets/{series}/{event}`, series being the event ticker with its trailing `-XX` stripped — verified live, the human slug segment isn't required for Kalshi's redirect to resolve). Most events price one market per party, so the ticker suffix (`-D`/`-R`) identifies the lane; an event priced per *candidate* instead — Alaska, which has no party primaries at all (see `docs/election-processes.md`) — carries a `candidateParties` map in `scripts/event_ticker_map.json` assigning each real contender to a lane, and candidates at or below 5% are dropped before normalization. If a race's data is missing or unusable, it carries forward that race's last-known-good values from the previous run's `latest.json` (flagged `stale`/`staleSince`) rather than ever showing 0% — and lists the state in `failedStates`. The payload also gets a `snapshotKey` (this run's history key) and `previousSnapshot` (the key of the run it supersedes, from `latest.json`'s `fetchedAt`; `null` on the first run) for future latest-vs-previous diffing.
+3. Uploads to the Cloudflare R2 bucket (`election-map`) via `scripts/r2_store.py`: first the immutable history entry `snapshots/<fetchedAt>.json` (ISO-8601 UTC, e.g. `snapshots/2026-09-07T18:30:00Z.json`), then — only if that succeeded — replaces `latest.json` with the same payload. If the history upload fails, `latest.json` is left untouched. If more than 25% of tickers failed this run, the history entry is still uploaded but `latest.json` is left on the previous good run (`--force-promote` overrides).
 
-`scripts/build_live_data.py` also runs standalone (`python3 scripts/build_live_data.py --input <dump> --output <out>`) if you ever need to rebuild from a manually saved raw discovery dump.
+`script.py --write-local` additionally (or, with no R2 config, solely) writes the old on-disk artifacts: `web/live-senate-data.json` and a timestamped copy under `live_data_snapshots/` (pruned to the newest 100 by `--keep-snapshots`). `scripts/build_live_data.py` also runs standalone (`python3 scripts/build_live_data.py --input <dump> --output <out>`) if you ever need to rebuild from a manually saved raw discovery dump; it's stdlib-only.
 
-Nothing else needs to change — `web/`'s HTML/CSS/JS never touch the data pipeline. Serve `web/` as a static directory (any static host works; no build step) and each run of `script.py` is the only thing that needs to happen to pick up new odds.
+### R2 config
+
+Copy `.env.example` to `.env` (gitignored) and fill in an R2 API token (Cloudflare dashboard → R2 → *Manage R2 API Tokens*, Object Read & Write on the `election-map` bucket): `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET`. Real environment variables override the file, so CI injects these as secrets directly.
+
+**UI URL (for the follow-up work item):** once the bucket has public access — an r2.dev dev domain or a custom domain bound to it — the UI fetches `<public-base>/latest.json`, and history entries live at `<public-base>/snapshots/<fetchedAt>.json` (the `:` in the timestamp needs percent-encoding as `%3A` in a browser fetch; `latest.json` has no such issue). Set `R2_PUBLIC_BASE_URL` in `.env` and `script.py` prints the resolved `latest.json` URL after each run.
+
+The `web/` HTML/CSS/JS still reads the local `web/live-senate-data.json` — pointing it at R2 is a separate work item.
 
 Run it locally with e.g. `python3 -m http.server` from inside `web/`.
