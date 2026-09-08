@@ -1,5 +1,6 @@
-// Fetches the live data artifact and renders the chamber-control gauge and
-// the seat spectrum bar. The wide (>=720px) and narrow (<720px) layouts are
+// Fetches the live data artifact (latest.json, served from the Cloudflare R2
+// bucket that script.py uploads to each run) and renders the chamber-control
+// gauge and the seat spectrum bar. The wide (>=720px) and narrow (<720px) layouts are
 // both built up front and switched with a CSS media query (see index.html),
 // not a resize listener -- almost all the layout math below is pure
 // percentages (NARROW_TRACK_HEIGHT is the one pixel-dependent exception).
@@ -23,6 +24,13 @@ import {
   positionTooltip
 } from './senate-shared.js';
 import { renderMap } from './map.js';
+
+// The live data artifact, served from the Cloudflare R2 bucket (script.py
+// uploads it as latest.json every run) via a custom domain bound to the
+// bucket. To repoint, change this URL *and* the matching <link rel="preload">
+// in index.html. The bucket needs a CORS policy allowing GET from this site's
+// origin, or the browser blocks the cross-origin fetch.
+const LIVE_DATA_URL = 'https://election-data.ebolton.site/latest.json';
 
 // --- Load profiler -------------------------------------------------------
 // Lightweight always-on instrumentation: app.js and map.js call window.__mark()
@@ -61,7 +69,7 @@ window.__perfReport = () => {
     dMs: i ? +(t - __marks[i - 1][1]).toFixed(1) : 0,
     tMs: +(t - __P0).toFixed(1),
   })));
-  const want = /d3\.min|topojson-client|us-states|live-senate-data|\/app\.js|\/map\.js|senate-shared/;
+  const want = /d3\.min|topojson-client|us-states|live-senate-data|latest\.json|\/app\.js|\/map\.js|senate-shared/;
   console.table(performance.getEntriesByType('resource').filter((e) => want.test(e.name)).map((e) => ({
     file: e.name.split('/').pop(),
     startMs: +e.startTime.toFixed(1),
@@ -596,7 +604,7 @@ function showError(err) {
 async function main() {
   try {
     window.__mark('main() enter');
-    const res = await fetch('./live-senate-data.json', { cache: 'no-store' });
+    const res = await fetch(LIVE_DATA_URL, { cache: 'no-store' });
     window.__mark('live-data fetch headers');
     if (!res.ok) throw new Error('HTTP ' + res.status);
     // res.text() then JSON.parse kept split (rather than res.json()) so the
