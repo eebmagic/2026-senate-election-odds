@@ -116,27 +116,40 @@ notes, explicitly marked not to be tracked.
 Full architecture is in `README.md`'s "Rebuild logic" — this is the
 practical stuff hit while working on it.
 
-- `script.py` fetches from Kalshi and writes `web/live-senate-data.json`
-  directly (in-memory transform via `scripts/build_live_data.build()`) —
-  there's no intermediate raw-dump file. `scripts/build_live_data.py` still
-  runs standalone (`--input`/`--previous`/`--output`) for rebuilding from a
-  manually saved dump.
+- `script.py` fetches from Kalshi, transforms in-memory via
+  `scripts/build_live_data.build()` (no intermediate raw-dump file), and
+  **uploads to the Cloudflare R2 bucket** (`election-map`) through
+  `scripts/r2_store.py`: `snapshots/<fetchedAt>.json` (ISO-8601 UTC) first,
+  then `latest.json` only if that succeeded. Needs `pip install -r
+  scripts/requirements.txt` and an `.env` (copy `.env.example`; real env
+  vars override it). `scripts/build_live_data.py` still runs standalone
+  (`--input`/`--previous`/`--output`) for rebuilding from a manually saved
+  dump, stdlib-only.
+- `script.py --write-local` restores the old on-disk behavior: writes
+  `web/live-senate-data.json` and a timestamped copy under
+  `live_data_snapshots/`. With no R2 config it's the *only* output. A plain
+  `python3 script.py` no longer touches either path.
 - `live_data_snapshots/` is a **tracked** (not gitignored) per-run audit
-  trail, pruned on disk to the newest N each run (`--keep-snapshots`,
-  default 100). A commit that includes it needs to stage deletions too —
-  `git add -A web/live-senate-data.json live_data_snapshots/`, not just the
-  single live-data file, or pruned files linger tracked in git.
-- If more than 25% of tickers fail a run, `script.py` deliberately leaves
-  `web/live-senate-data.json` on the previous good run instead of
-  overwriting it with mostly-stale data (the snapshot is still written, for
-  debugging). Read "the live file didn't change" as that gate tripping, not
-  the script being broken — check the run's own failure-rate output first.
-- Before running `script.py` against the real repo paths, check `git
-  status`/`but status` for uncommitted changes to `web/live-senate-data.json`
-  — other agents' in-progress UI work can be mid-edit on that exact file. If
-  the working tree is clear there, just run against the real defaults; a bad
-  pull can be reverted from git state (and the >25% failure gate above
-  already blocks the worst case).
+  trail, only written under `--write-local`, pruned on disk to the newest N
+  (`--keep-snapshots`, default 100). A commit that includes it needs to
+  stage deletions too — `git add -A web/live-senate-data.json
+  live_data_snapshots/`, not just the single live-data file, or pruned files
+  linger tracked in git.
+- The built payload carries `snapshotKey` (this run's history key) and
+  `previousSnapshot` (the key of the run it supersedes, derived from
+  `latest.json`'s `fetchedAt`; `null` on the first run) for future
+  latest-vs-previous diffing.
+- If more than 25% of tickers fail a run, `script.py` uploads the
+  `snapshots/` entry for debugging but leaves `latest.json` on the previous
+  good run (`--force-promote` overrides). If the `snapshots/` upload itself
+  fails, `latest.json` is left untouched and the script exits non-zero.
+  "`latest.json` didn't change" usually means one of those gates tripped —
+  check the run's failure-rate output first.
+- Before running `script.py --write-local` against the real repo paths,
+  check `git status`/`but status` for uncommitted changes to
+  `web/live-senate-data.json` — other agents' in-progress UI work can be
+  mid-edit on that exact file. A plain (R2-only) run doesn't touch the
+  working tree.
 - Kalshi quirk baked into `scripts/event_ticker_map.json`: the
   `SENATELA-26` event ticker actually carries **Kentucky's** markets (a
   labeling bug on Kalshi's side); real Louisiana is `KXSENATELA-26NOV`.
@@ -145,9 +158,11 @@ practical stuff hit while working on it.
   far: `TACH`, `IND`, `DOSB`, `BBEN` across different races) — don't
   hardcode them; `build_race()`'s "anything that isn't `-D`/`-R` is an
   other-ticker" fallback is the correct approach.
-- Both scripts are stdlib-only (no `requirements.txt`, no venv) — keep it
-  that way unless there's a real reason not to; it's what makes this easy to
-  drop into a cron job or GitHub Actions runner later.
+- `scripts/build_live_data.py` is stdlib-only — keep it that way. `script.py`
+  now needs `scripts/requirements.txt` (`boto3`, `python-dotenv`) for the R2
+  upload, but the imports are lazy: `--write-local` and the standalone
+  `build_live_data.py` still run with nothing but the stdlib installed. Don't
+  add further deps without a real reason.
 
 ## Shared code to know about
 

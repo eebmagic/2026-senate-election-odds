@@ -1,20 +1,32 @@
 #!/usr/bin/env python3
 """
-End-to-end Kalshi -> web/live-senate-data.json pipeline. Fetches raw market
-data for every 2026 Senate race (plus the CONTROLS-2026 chamber-control
-market), transforms it in-memory via scripts/build_live_data.py's build()
-(normalizing outcome prices, deriving primary-pending flags, computing each
-race's Kalshi URL, carrying forward stale races when a fetch failed), and
-writes the result straight to web/live-senate-data.json -- the file
-web/app.js fetches at runtime.
+End-to-end Kalshi -> Cloudflare R2 pipeline. Fetches raw market data for every
+2026 Senate race (plus the CONTROLS-2026 chamber-control market), transforms
+it in-memory via scripts/build_live_data.py's build() (normalizing outcome
+prices, deriving primary-pending flags, computing each race's Kalshi URL,
+carrying forward stale races when a fetch failed), and uploads the result to
+an R2 bucket:
 
-Each run also writes its own timestamped copy under live_data_snapshots/ (an
-append-only audit trail -- nothing is ever overwritten there) before
-atomically repointing web/live-senate-data.json at it. If too many tickers
-failed this run (see FAILURE_RATE_ALERT_THRESHOLD), the snapshot is still
-written for debugging but web/live-senate-data.json is left on the previous
-good run instead, so one bad pull can never clobber the live site with mostly
-stale/empty data. Pass --force-promote to override that.
+  latest.json                  what the UI fetches
+  snapshots/<fetchedAt>.json   immutable per-run history
+
+Each run uploads its snapshots/<fetchedAt>.json copy FIRST; only if that
+succeeds is latest.json replaced. If the history upload fails, latest.json is
+left untouched. If too many tickers failed this run (see
+FAILURE_RATE_ALERT_THRESHOLD), the snapshot is still uploaded for debugging
+but latest.json is left on the previous good run, so one bad pull can never
+clobber the live site with mostly stale/empty data. Pass --force-promote to
+override that.
+
+The built payload carries two link fields for future diffing:
+  snapshotKey        this run's own history key
+  previousSnapshot   the key of the run this one supersedes (null on the
+                     first run), derived from the fetchedAt in latest.json
+
+R2 config comes from a .env file at the repo root -- see .env.example and
+scripts/r2_store.py. Pass --write-local to additionally (or, with no R2
+config, solely) write the old on-disk artifacts: web/live-senate-data.json
+and a timestamped copy under live_data_snapshots/.
 
 The event ticker list is read from the checked-in
 scripts/event_ticker_map.json, not hardcoded here, so the fetch and the
@@ -25,9 +37,10 @@ Kalshi's side, not actually Louisiana); real Louisiana is KXSENATELA-26NOV.
 Encoded in event_ticker_map.json, not here.
 
 Usage:
-    python3 script.py
-    python3 script.py --dry-run
-    python3 script.py --output /tmp/live-senate-data.json --keep-snapshots 0
+    python3 script.py                      # fetch + upload to R2
+    python3 script.py --dry-run            # fetch + print, no writes
+    python3 script.py --write-local        # also write the on-disk artifacts
+    python3 script.py --bucket other-bkt   # override $R2_BUCKET
 """
 import argparse
 import json
@@ -60,9 +73,10 @@ INITIAL_BACKOFF_SECONDS = 3
 # a bad day stays under this and is absorbed by build()'s stale carryforward.
 FAILURE_RATE_ALERT_THRESHOLD = 0.25
 
-# scripts/ isn't a package -- import build_live_data by path.
+# scripts/ isn't a package -- import its modules by path.
 sys.path.insert(0, str(ROOT / "scripts"))
 import build_live_data as bld  # noqa: E402
+import r2_store  # noqa: E402
 
 
 def _wait_before_retry(delay: float) -> float:
@@ -161,25 +175,46 @@ def prune_snapshots(snapshot_dir: Path, keep: int) -> None:
 
 def parse_args():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("--output", type=Path, default=OUTPUT_PATH,
-                         help="stable 'latest' path web/app.js fetches (default: %(default)s). "
-                              "Each run also writes a timestamped, never-overwritten copy under "
-                              "--snapshot-dir and then atomically repoints this path at it.")
-    parser.add_argument("--snapshot-dir", type=Path, default=SNAPSHOT_DIR,
-                         help="directory for this run's timestamped output copy (default: %(default)s)")
-    parser.add_argument("--keep-snapshots", type=int, default=100,
-                         help="prune snapshot dir to the N most recent files after a successful run "
-                              "(default: %(default)s; 0 disables pruning)")
+    parser.add_argument("--bucket", default=None,
+                         help="R2 bucket to write latest.json / snapshots/ into "
+                              "(default: $R2_BUCKET, else 'election-map')")
+    parser.add_argument("--env-file", type=Path, default=r2_store.DEFAULT_ENV_PATH,
+                         help="path to the .env holding R2 credentials (default: %(default)s)")
     parser.add_argument("--force-promote", action="store_true",
-                         help="repoint --output at this run's snapshot even if the failure-rate threshold "
-                              "was exceeded (default: leave the previous good output in place)")
+                         help="update latest.json with this run even if the failure-rate threshold "
+                              "was exceeded (default: leave the previous good run in place)")
+    parser.add_argument("--write-local", action="store_true",
+                         help="also write the on-disk artifacts (web/live-senate-data.json plus a "
+                              "timestamped copy under --snapshot-dir). With no R2 config this is the "
+                              "only output. Default: R2 only.")
+    parser.add_argument("--output", type=Path, default=OUTPUT_PATH,
+                         help="--write-local: stable path to promote to (default: %(default)s)")
+    parser.add_argument("--snapshot-dir", type=Path, default=SNAPSHOT_DIR,
+                         help="--write-local: directory for this run's timestamped copy (default: %(default)s)")
+    parser.add_argument("--keep-snapshots", type=int, default=100,
+                         help="--write-local: prune --snapshot-dir to the N most recent files after a "
+                              "successful run (default: %(default)s; 0 disables pruning)")
     parser.add_argument("--dry-run", action="store_true",
-                         help="fetch and print, but don't write any files")
+                         help="fetch and print, but don't write or upload anything")
     return parser.parse_args()
 
 
 def main():
     args = parse_args()
+
+    # Wire up R2 unless we're doing an offline --write-local run.
+    r2 = None
+    r2_config_error = None
+    try:
+        r2 = r2_store.R2Store.from_env(env_path=args.env_file, bucket=args.bucket)
+    except r2_store.R2ConfigError as e:
+        r2_config_error = e
+
+    if r2 is None and not args.write_local and not args.dry_run:
+        print(f"ERROR: R2 is not configured: {r2_config_error}\n"
+              f"Fix {args.env_file} (see .env.example), or pass --write-local to "
+              f"write only the on-disk artifacts.", file=sys.stderr)
+        return 2
 
     event_map = bld.load_event_map()
     event_tickers = sorted(event_map.keys()) + [CONTROLS_EVENT_TICKER]
@@ -193,35 +228,91 @@ def main():
     if failures:
         print(f"  Failed: {failures}")
 
-    # Feeds build()'s stale-carryforward; captured before any write this run.
-    previous = bld.load_previous_output(args.output)
+    # `previous` feeds build()'s stale-carryforward AND the previousSnapshot
+    # link. It comes from R2's latest.json; the local file is only consulted
+    # in the offline --write-local path.
+    previous = None
+    if r2 is not None:
+        try:
+            previous = r2.get_json(r2_store.LATEST_KEY)
+        except Exception as e:  # noqa: BLE001 -- botocore raises a wide range
+            if args.dry_run:
+                print(f"\nwarning: couldn't read {r2_store.LATEST_KEY} from R2 ({e}); "
+                      f"continuing without stale carryforward.")
+            else:
+                print(f"\nERROR: couldn't read {r2_store.LATEST_KEY} from R2: {e}\n"
+                      f"Aborting before any write so a transient read failure can't drop "
+                      f"stale-race carryforward.", file=sys.stderr)
+                return 2
+    elif args.write_local:
+        previous = bld.load_previous_output(args.output)
+    elif args.dry_run:
+        print(f"\nnote: R2 not configured ({r2_config_error}); "
+              f"skipping the {r2_store.LATEST_KEY} read.")
+
     output = bld.build(discovery, event_map, previous)
+
+    # Link this run to the one it supersedes, keyed the same way this run's
+    # own history entry will be. previousSnapshot is null on the first run.
+    output["snapshotKey"] = r2_store.snapshot_key(output["fetchedAt"])
+    prev_fetched_at = previous.get("fetchedAt") if previous else None
+    output["previousSnapshot"] = (
+        previous.get("snapshotKey") or r2_store.snapshot_key(prev_fetched_at)
+        if prev_fetched_at else None
+    )
+
     print(f"\nBuilt {len(output['races'])} races "
           f"({len(output['failedStates'])} failed: {output['failedStates']})")
+    print(f"  snapshotKey:      {output['snapshotKey']}")
+    print(f"  previousSnapshot: {output['previousSnapshot']}")
 
     if args.dry_run:
-        print("\n--dry-run: not writing any files.")
+        print("\n--dry-run: not writing or uploading anything.")
         return 1 if failure_rate > FAILURE_RATE_ALERT_THRESHOLD else 0
 
-    now = datetime.now(timezone.utc)
     healthy = failure_rate <= FAILURE_RATE_ALERT_THRESHOLD
 
-    # Every run is kept as a snapshot; only a healthy run (or --force-promote)
-    # is also promoted to the stable --output path web/app.js reads.
-    snapshot_path = snapshot_path_for(args.snapshot_dir, now)
-    bld.write_json_atomic(snapshot_path, output)
-    print(f"Wrote {snapshot_path}")
+    # --- R2: the store ---
+    # Upload the immutable history entry first; only promote latest.json to it
+    # if that succeeded and the run was healthy (or --force-promote).
+    if r2 is not None:
+        snap_key = output["snapshotKey"]
+        try:
+            r2.put_json(snap_key, output)
+        except Exception as e:  # noqa: BLE001
+            print(f"\nERROR: failed to upload {snap_key} to R2: {e}\n"
+                  f"{r2_store.LATEST_KEY} left unchanged.", file=sys.stderr)
+            return 3
+        print(f"Uploaded s3://{r2.bucket}/{snap_key}")
 
-    if healthy or args.force_promote:
-        bld.write_json_atomic(args.output, output)
-        print(f"Promoted it to {args.output}"
-              + ("" if healthy else " (--force-promote overrode the failure-rate threshold)"))
-    else:
-        print(f"\n{len(failures)}/{len(event_tickers)} tickers failed "
-              f"(> {FAILURE_RATE_ALERT_THRESHOLD:.0%} threshold). Did NOT promote to {args.output} "
-              f"-- leaving the previous good file in place. Pass --force-promote to override.")
+        if healthy or args.force_promote:
+            r2.put_json(r2_store.LATEST_KEY, output)
+            print(f"Updated s3://{r2.bucket}/{r2_store.LATEST_KEY}"
+                  + ("" if healthy else " (--force-promote overrode the failure-rate threshold)"))
+            url = r2.public_url(r2_store.LATEST_KEY)
+            if url:
+                print(f"  public URL: {url}")
+        else:
+            print(f"\n{len(failures)}/{len(event_tickers)} tickers failed "
+                  f"(> {FAILURE_RATE_ALERT_THRESHOLD:.0%} threshold). Did NOT update "
+                  f"{r2_store.LATEST_KEY} -- it still points at the previous good run. "
+                  f"Pass --force-promote to override.")
 
-    prune_snapshots(args.snapshot_dir, args.keep_snapshots)
+    # --- Local artifacts: opt-in ---
+    if args.write_local:
+        now = datetime.now(timezone.utc)
+        snapshot_path = snapshot_path_for(args.snapshot_dir, now)
+        bld.write_json_atomic(snapshot_path, output)
+        print(f"Wrote {snapshot_path}")
+
+        if healthy or args.force_promote:
+            bld.write_json_atomic(args.output, output)
+            print(f"Promoted it to {args.output}"
+                  + ("" if healthy else " (--force-promote overrode the failure-rate threshold)"))
+        else:
+            print(f"Did NOT promote to {args.output} -- previous good file left in place.")
+
+        prune_snapshots(args.snapshot_dir, args.keep_snapshots)
 
     return 1 if not healthy else 0
 
