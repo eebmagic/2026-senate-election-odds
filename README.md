@@ -34,6 +34,16 @@ Every contested-race segment in the spectrum bar (wide and narrow layouts alike)
 
 `app.js` fetches the live data on load from `LIVE_DATA_URL` (the Cloudflare R2 bucket's public `latest.json`; kept in sync with a `<link rel="preload">` in `index.html`); the page shows a loading state until that resolves and an error state if the fetch fails.
 
+## Deployment
+
+`web/` is served by a Cloudflare Worker (`senate-elections`) in static-assets
+mode — no server code, config in `wrangler.jsonc` (`assets.directory = ./web`,
+`workers_dev = false`, a `custom_domain` route for
+`senate-elections.ebolton.site`). The Worker has a connected-Git build that
+runs `npx wrangler deploy` on every push to `main`, so a merge to `main` is a
+production deploy. There is no build step. (This replaced a GitHub Pages
+`actions/deploy-pages` workflow.)
+
 ## Rebuild logic
 
 The live data is a generated artifact, not hand-edited. To refresh it, run `python3 script.py` (needs `pip install -r scripts/requirements.txt` and an `.env` — see below). It:
@@ -50,6 +60,6 @@ Copy `.env.example` to `.env` (gitignored) and fill in an R2 API token (Cloudfla
 
 **Public URL:** the UI fetches `latest.json` from a custom domain bound to the bucket, `https://election-data.ebolton.site/latest.json` — set as `LIVE_DATA_URL` in `web/app.js` and preloaded in `web/index.html` (keep the two in sync). History entries live at `<base>/snapshots/<fetchedAt>.json` (the `:` in the timestamp needs percent-encoding as `%3A` in a browser fetch; `latest.json` has no such issue). Set `R2_PUBLIC_BASE_URL` in `.env` and `script.py` prints the resolved URL after each run.
 
-The bucket needs a CORS policy allowing `GET` from the site origin (and `http://localhost:*` for local dev) or the browser blocks the cross-origin fetch — configure it in the dashboard under R2 → the bucket → Settings → CORS Policy.
+The bucket needs a CORS policy allowing `GET` from the site origin (`https://senate-elections.ebolton.site`, plus `http://localhost:8000` for local dev) or the browser blocks the cross-origin fetch — configure it in the dashboard under R2 → the bucket → Settings → CORS Policy.
 
 Run it locally with e.g. `python3 -m http.server` from inside `web/`.
