@@ -1,0 +1,7 @@
+{
+  "name": "senate-elections",
+  "compatibility_date": "2026-09-08",
+  "assets": {
+    "directory": "./web"
+  }
+}
