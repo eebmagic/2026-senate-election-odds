@@ -498,8 +498,8 @@ function renderWideBar(vals) {
   container.innerHTML = `
     <div class="bar-wrap-wide" id="bar-wide">
       <div class="callout" style="left:${vals.majorityLinePos}%; color:#211f1c;">50 seats</div>
-      <div class="callout" style="left:${vals.demSolidLabelPos}%; color:#1c3f7a;">${vals.demSolidCount} D seats not up</div>
-      <div class="callout" style="left:${vals.repSolidLabelPos}%; color:#8a2a22;">${vals.repSolidCount} R seats not up</div>
+      <div class="callout" style="left:${vals.demSolidLabelPos}%; color:#003399;">${vals.demSolidCount} D seats not up</div>
+      <div class="callout" style="left:${vals.repSolidLabelPos}%; color:#9e1722;">${vals.repSolidCount} R seats not up</div>
       <div class="bar-wide">
         <div class="solid-block dem" style="flex:${vals.demBlockFlex};" data-tip="dem-solid"></div>
         <div class="contested-wrap-wide" style="flex:${vals.contestedWrapFlex};">
