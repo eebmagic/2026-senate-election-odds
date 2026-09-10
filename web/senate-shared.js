@@ -4,10 +4,10 @@
 // buildStateSummaries().
 
 export const COLORS = {
-  demSolid: '#1c3f7a',
-  dem: '#2f5aa8',
-  repSolid: '#8a2a22',
-  rep: '#b3372c',
+  demSolid: '#003399',
+  dem: '#0044c9',
+  repSolid: '#9e1722',
+  rep: '#d71f27',
   neutral: '#c7c4bd',
   independent: '#c98a2c',
   bg: '#faf8f4',
