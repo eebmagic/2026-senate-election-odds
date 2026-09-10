@@ -46,10 +46,12 @@ authed (`gh pr edit <n> --repo eebmagic/2026-senate-election-odds --title ...
 the shell intact. Editing a PR modifies public content, so ask before the
 first edit of a given PR rather than rewriting a description unprompted.
 
-**Merging to `main` deploys live** — `.github/workflows/deploy-pages.yml`
-auto-publishes `web/**` to GitHub Pages on every push to `main`. Treat a PR
-merge as a production deploy: verify in the browser before considering an
-item done, not just via code review.
+**Merging to `main` deploys live** — the `senate-elections` Cloudflare Worker
+(static-assets only, config in `wrangler.jsonc`) has a connected-Git build
+that runs `npx wrangler deploy` on every push to `main`, publishing `web/**`
+at https://senate-elections.ebolton.site. Treat a PR merge as a production
+deploy: verify in the browser before considering an item done, not just via
+code review.
 
 ## Tracking work items (Obsidian Kanban)
 There is a linked dir: senate-election-map-kanban/
