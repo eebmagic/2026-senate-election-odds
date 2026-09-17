@@ -136,9 +136,14 @@ export function raceHasPendingPrimary(race) {
 // state; the listed fields replace the fetched values. Drop an entry once the
 // upstream feed catches up.
 export const RACE_OVERRIDES = {
-  // OK Democratic primary resolved for N'Kiyla Thomas; Kalshi still lists a
-  // generic "Democratic party" placeholder with the primary flagged pending.
-  OK: { demCandidate: "N'Kiyla Thomas", demPrimaryPending: false }
+  // DE primaries (Sep 15) resolved for both parties; Kalshi still lists
+  // generic party placeholders with both primaries flagged pending.
+  DE: {
+    demCandidate: 'Chris Coons',
+    repCandidate: 'Michael Katz',
+    demPrimaryPending: false,
+    repPrimaryPending: false
+  }
 };
 
 export function applyRaceOverrides(races) {
