@@ -164,7 +164,11 @@
   .solid-block-narrow.rep { background: #d71f27; }
   .contested-wrap-narrow { width: 100%; display: flex; flex-direction: column; border-top: 1px solid rgba(250,248,244,0.5); box-sizing: border-box; }
   .seg-narrow { position: relative; flex: 1 1 0%; width: 100%; border-bottom: 1px solid rgba(250,248,244,0.5); box-sizing: border-box; cursor: pointer; color: #fff; text-decoration: none; display: flex; align-items: center; justify-content: center; gap: 5px; }
-  .seg-narrow .seg-state { font-size: 10px; }
+  /* Fixed-width, right-aligned state-name column so its right edge lines up
+     across rows regardless of name length -- the pct/party that follow then
+     land in the same spot on every row too. */
+  .seg-narrow .seg-state { font-size: 10px; flex: 0 0 92px; text-align: right; white-space: nowrap; }
+  .seg-narrow .seg-pct { flex: 0 0 20px; text-align: right; }
   .pending-badge { display: inline-flex; align-items: center; justify-content: center; width: 12px; height: 12px; border-radius: 50%; background: #faf8f4; border: 1.5px solid #211f1c; color: #211f1c; font-size: 9px; font-weight: 800; line-height: 1; pointer-events: none; }
   .ind-mark-v { position: absolute; top: 50%; left: 7px; transform: translateY(-24%); }
   .pending-mark-v { position: absolute; top: 50%; right: 4px; transform: translateY(-50%); }

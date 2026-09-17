@@ -247,6 +247,7 @@ function makeContestedSeg(r, fetchedAt) {
   const leader = raceLeader(r);
   return {
     state: r.state,
+    stateName: STATE_NAMES[r.state] || r.state,
     race: r,
     href: r.kalshiUrl,
     color: colorForDemProb(raceAxisProb(r)),
@@ -424,7 +425,7 @@ function segHtmlWide(seg, i) {
 function segHtmlNarrow(seg, i) {
   return `
     <a class="seg-narrow" href="${escapeHtml(seg.href)}" target="_blank" rel="noopener noreferrer" style="background:${seg.color};" data-seg-index="${i}">
-      <span class="seg-state">${escapeHtml(seg.state)}</span>
+      <span class="seg-state">${escapeHtml(seg.stateName)}</span>
       <span class="seg-pct">${seg.leadLabel}</span>
       <span class="seg-party">${seg.leadParty}</span>
       ${seg.showIndependentMark ? '<span class="ind-mark ind-mark-v" role="img" aria-label="Independent polling above 10%">&#42;</span>' : ''}
