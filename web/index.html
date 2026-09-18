@@ -265,10 +265,15 @@
   .movers-header { display: flex; justify-content: space-between; align-items: baseline; gap: 16px; flex-wrap: wrap; }
   #movers-snapshot-line { margin: 2px 0 20px; }
   .movers-tables { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; }
-  .movers-table-header { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; margin-bottom: 2px; }
+  .movers-table-header { display: flex; align-items: baseline; gap: 8px; margin-bottom: 2px; flex-wrap: wrap; }
   .movers-table-title { font-size: 13px; font-weight: 700; }
-  .movers-col-header, .mover-row { display: grid; grid-template-columns: 28px 1fr 40px 20px 40px 52px; gap: 8px; }
-  .movers-col-header { align-items: center; font-size: 10.5px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: #5b574f; padding: 0 0 7px 8px; }
+  .movers-table-subtitle { font-size: 11px; font-weight: 400; color: #5b574f; }
+  /* 3rd column is 80px (vs. 40px for the other value columns) so the
+     7-day table's "7 days ago" header fits on one line -- see the mobile
+     override below, which shrinks it back down and allows wrapping since
+     there isn't room for the full label at that width. */
+  .movers-col-header, .mover-row { display: grid; grid-template-columns: 28px 1fr 80px 20px 40px 52px; gap: 8px; }
+  .movers-col-header { align-items: center; font-size: 10.5px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: #5b574f; padding: 0 0 7px 8px; white-space: nowrap; }
   .movers-col-header div:nth-child(3) { text-align: right; }
   .movers-col-header div:nth-child(5) { text-align: left; }
   .movers-col-header div:nth-child(6) { text-align: center; }
@@ -309,6 +314,8 @@
     .movers-tables { grid-template-columns: 1fr; gap: 24px; }
     .movers-body { min-height: 0 !important; }
     .movers-col-header, .mover-row { grid-template-columns: 24px 1fr 40px 14px 40px 46px; gap: 6px; }
+    /* No room for "7 days ago" at this width -- back to wrapping. */
+    .movers-col-header { white-space: normal; }
   }
 
   /* Repo link, pinned to the viewport's top-right corner (outside #page's
@@ -392,8 +399,8 @@
       <div class="movers-tables">
         <div class="movers-table">
           <div class="movers-table-header">
-            <div class="movers-table-title">Today</div>
-            <div class="caption" id="movers-today-vs"></div>
+            <span class="movers-table-title">Today</span>
+            <span class="movers-table-subtitle" id="movers-today-vs"></span>
           </div>
           <div class="movers-col-header">
             <div>St</div>
@@ -410,13 +417,13 @@
         </div>
         <div class="movers-table">
           <div class="movers-table-header">
-            <div class="movers-table-title">Last 7 days</div>
-            <div class="caption" id="movers-week-vs"></div>
+            <span class="movers-table-title">Last 7 days</span>
+            <span class="movers-table-subtitle" id="movers-week-vs"></span>
           </div>
           <div class="movers-col-header">
             <div>St</div>
             <div>Leading candidate</div>
-            <div>7d ago</div>
+            <div>7 days ago</div>
             <div></div>
             <div>Now</div>
             <div>Change</div>

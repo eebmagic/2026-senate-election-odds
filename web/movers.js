@@ -170,7 +170,7 @@ export async function renderMovers(data) {
         renderTable(t.rowsId, t.emptyId, [], 'Not enough history yet.');
         continue;
       }
-      if (vsEl) vsEl.textContent = `vs. ${formatDateLabel(comparisonEntry.date)}`;
+      if (vsEl) vsEl.textContent = `changes since ${formatDateLabel(comparisonEntry.date)}`;
       try {
         const snapshotUrl = SNAPSHOT_BASE_URL
           + comparisonEntry.key.split('/').map(encodeURIComponent).join('/');
