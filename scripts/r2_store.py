@@ -9,6 +9,13 @@ live_data_snapshots/ audit trail. The store is now an R2 bucket instead:
   snapshots/<fetchedAt>.json   immutable per-run history, keyed by the run's
                                own fetchedAt (ISO-8601 UTC), e.g.
                                snapshots/2026-09-07T18:30:00Z.json
+  snapshot-index.json          {"days": [{"date", "key", "fetchedAt"}, ...]},
+                               one entry per UTC calendar day (its last
+                               snapshot that day), ascending by date -- lets
+                               the UI look up "yesterday"/"7 days ago" by
+                               calendar date directly, without listing the
+                               bucket itself (the public custom domain
+                               doesn't support the S3 list API)
 
 Each run uploads its snapshots/<ts>.json first; only if that succeeds is
 latest.json replaced. So a failed history write can never leave latest.json
@@ -38,6 +45,7 @@ DEFAULT_ENV_PATH = ROOT / ".env"
 DEFAULT_BUCKET = "election-map"
 LATEST_KEY = "latest.json"
 SNAPSHOT_PREFIX = "snapshots/"
+INDEX_KEY = "snapshot-index.json"
 
 # R2 ignores the region, but botocore's SigV4 signer still requires one set.
 _R2_REGION = "auto"
@@ -50,6 +58,11 @@ class R2ConfigError(RuntimeError):
 def snapshot_key(fetched_at: str) -> str:
     """Bucket key for the history entry of a run with this fetchedAt."""
     return f"{SNAPSHOT_PREFIX}{fetched_at}.json"
+
+
+def snapshot_fetched_at(key: str) -> str:
+    """Inverse of snapshot_key: the fetchedAt encoded in a snapshots/ key."""
+    return key[len(SNAPSHOT_PREFIX):-len(".json")]
 
 
 def load_env(path: Path = DEFAULT_ENV_PATH) -> None:
@@ -129,6 +142,22 @@ class R2Store:
         body = (json.dumps(payload, indent=2) + "\n").encode("utf-8")
         self._client.put_object(Bucket=self.bucket, Key=key, Body=body,
                                 ContentType="application/json")
+
+    def list_snapshot_keys(self) -> list[str]:
+        """Every snapshots/<fetchedAt>.json key currently in the bucket
+        (unsorted), paginating as needed."""
+        keys = []
+        continuation = None
+        while True:
+            kwargs = {"Bucket": self.bucket, "Prefix": SNAPSHOT_PREFIX}
+            if continuation:
+                kwargs["ContinuationToken"] = continuation
+            resp = self._client.list_objects_v2(**kwargs)
+            keys.extend(obj["Key"] for obj in resp.get("Contents", []))
+            if not resp.get("IsTruncated"):
+                break
+            continuation = resp.get("NextContinuationToken")
+        return keys
 
     def public_url(self, key: str) -> str | None:
         if not self.public_base_url:

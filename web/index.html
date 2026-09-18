@@ -258,6 +258,59 @@
      overpromise on uncontested ones. */
   path.state.linked { cursor: pointer; }
 
+  /* Biggest movers -- a dense table (state, leading candidate, before/after
+     probability, change) rather than a candidate-vs-candidate card; column
+     widths/colors below match the design mock (biggest-movers-mock.html). */
+  .movers-section { margin-top: 48px; }
+  .movers-header { display: flex; justify-content: space-between; align-items: baseline; gap: 16px; flex-wrap: wrap; }
+  #movers-snapshot-line { margin: 2px 0 20px; }
+  .movers-tables { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; }
+  .movers-table-header { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; margin-bottom: 2px; }
+  .movers-table-title { font-size: 13px; font-weight: 700; }
+  .movers-col-header, .mover-row { display: grid; grid-template-columns: 28px 1fr 40px 20px 40px 52px; gap: 8px; }
+  .movers-col-header { align-items: center; font-size: 10.5px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: #5b574f; padding: 0 0 7px 8px; }
+  .movers-col-header div:nth-child(3) { text-align: right; }
+  .movers-col-header div:nth-child(5) { text-align: left; }
+  .movers-col-header div:nth-child(6) { text-align: center; }
+  /* min-height is set inline (movers.js) so the two tables match height on
+     desktop even when one has fewer notable movers than the other; the
+     narrow layout below cancels it since the tables stack instead. */
+  .movers-body { min-height: 0; }
+  /* align-items: stretch (rather than the header's center) plus per-cell,
+     not row-level, vertical padding -- so .mover-delta's background is the
+     same height as the row itself, edge to edge, instead of a smaller block
+     floating inside the row's own padding. */
+  .mover-row { align-items: stretch; padding-left: 8px; border-bottom: 1px solid #e2ded5; border-left: 3px solid transparent; text-decoration: none; color: inherit; }
+  .mover-row.dem { border-left-color: #0044c9; background: rgba(0, 68, 201, 0.055); }
+  .mover-row.rep { border-left-color: #d71f27; background: rgba(215, 31, 39, 0.055); }
+  .mover-state { display: flex; align-items: center; padding: 8px 0; font-size: 12.5px; font-weight: 700; }
+  .mover-candidate { display: flex; align-items: center; gap: 6px; min-width: 0; padding: 8px 0; }
+  .mover-badge { flex: none; width: 16px; height: 16px; border-radius: 3px; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 800; color: #faf8f4; }
+  .mover-badge.dem { background: #0044c9; }
+  .mover-badge.rep { background: #d71f27; }
+  .mover-name { font-size: 12.5px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .mover-name.dem { color: #003399; }
+  .mover-name.rep { color: #9e1722; }
+  /* Yesterday/now flank the arrow (right-aligned then left-aligned) so the
+     arrow sits centered in the actual gap between the two values, rather
+     than between two fixed-width columns whose numbers may not fill them
+     evenly (e.g. "100%" vs. "73%"). */
+  .mover-prev, .mover-now, .mover-arrow { display: flex; align-items: center; padding: 8px 0; font-size: 12.5px; white-space: nowrap; }
+  .mover-prev { justify-content: flex-end; color: #5b574f; }
+  .mover-arrow { justify-content: center; color: #9a958c; }
+  .mover-now { justify-content: flex-start; font-weight: 700; color: #211f1c; }
+  .mover-delta { display: flex; align-items: center; justify-content: center; font-size: 12.5px; font-weight: 800; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  /* Gain/loss indicator (green/red) -- whether the *leader* gained or slipped,
+     independent of which party leads, so deliberately not COLORS.dem/.rep. */
+  .mover-delta.up { color: #0f8a3d; background: rgba(15, 138, 61, 0.16); }
+  .mover-delta.down { color: #e01b12; background: rgba(224, 27, 18, 0.16); }
+  .movers-empty { font-size: 12.5px; color: #5b574f; padding: 10px 0; display: none; }
+  @media (max-width: 719px) {
+    .movers-tables { grid-template-columns: 1fr; gap: 24px; }
+    .movers-body { min-height: 0 !important; }
+    .movers-col-header, .mover-row { grid-template-columns: 24px 1fr 40px 14px 40px 46px; gap: 6px; }
+  }
+
   /* Repo link, pinned to the viewport's top-right corner (outside #page's
      centered column). Muted ink by default, full ink on hover. */
   .gh-link { position: fixed; top: 16px; right: 16px; z-index: 10; display: flex; color: #5b574f; transition: color 0.15s; }
@@ -327,6 +380,52 @@
       <div id="map-wrap">
         <svg id="map-svg" viewBox="0 0 975 610"></svg>
         <div class="tooltip" id="map-tooltip"></div>
+      </div>
+    </div>
+
+    <div class="movers-section" id="movers-section" style="display: none;">
+      <div class="movers-header">
+        <div class="section-heading">Biggest movers</div>
+        <div class="caption">Change in the leading candidate's win probability, in percentage points</div>
+      </div>
+      <div class="caption" id="movers-snapshot-line"></div>
+      <div class="movers-tables">
+        <div class="movers-table">
+          <div class="movers-table-header">
+            <div class="movers-table-title">Today</div>
+            <div class="caption" id="movers-today-vs"></div>
+          </div>
+          <div class="movers-col-header">
+            <div>St</div>
+            <div>Leading candidate</div>
+            <div>Yesterday</div>
+            <div></div>
+            <div>Now</div>
+            <div>Change</div>
+          </div>
+          <div class="movers-body" id="movers-today-body">
+            <div class="movers-rows" id="movers-today-rows"></div>
+            <div class="movers-empty" id="movers-today-empty"></div>
+          </div>
+        </div>
+        <div class="movers-table">
+          <div class="movers-table-header">
+            <div class="movers-table-title">Last 7 days</div>
+            <div class="caption" id="movers-week-vs"></div>
+          </div>
+          <div class="movers-col-header">
+            <div>St</div>
+            <div>Leading candidate</div>
+            <div>7d ago</div>
+            <div></div>
+            <div>Now</div>
+            <div>Change</div>
+          </div>
+          <div class="movers-body" id="movers-week-body">
+            <div class="movers-rows" id="movers-week-rows"></div>
+            <div class="movers-empty" id="movers-week-empty"></div>
+          </div>
+        </div>
       </div>
     </div>
 
