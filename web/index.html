@@ -261,9 +261,11 @@
   /* Biggest movers -- a dense table (state, leading candidate, before/after
      probability, change) rather than a candidate-vs-candidate card; column
      widths/colors below match the design mock (biggest-movers-mock.html).
-     "Change" ranks by the leader's move relative to their prior probability
-     (see movers.js), not raw percentage points -- so a 49% -> 52% swing
-     outranks a 100% -> 95% one. */
+     The top-10 selection/ranking is by the leader's move relative to their
+     prior probability (see movers.js) -- so a 49% -> 52% swing outranks a
+     100% -> 95% one -- but the "Change" column itself always displays the
+     raw percentage-point delta, since a relative-percent figure reads as
+     confusing next to two probabilities that are themselves percentages. */
   .movers-section { margin-top: 48px; }
   .movers-header { display: flex; justify-content: space-between; align-items: baseline; gap: 16px; flex-wrap: wrap; }
   #movers-snapshot-line { margin: 2px 0 20px; }
@@ -423,7 +425,7 @@
     <div class="movers-section" id="movers-section" style="display: none;">
       <div class="movers-header">
         <div class="section-heading">Biggest movers</div>
-        <div class="caption">Change in the leading candidate's win probability, relative to its previous value — e.g. 49%&rarr;52% ranks above 100%&rarr;95%</div>
+        <div class="caption">Change in the leading candidate's win probability, in percentage points — ranked by size of the move relative to where it started, e.g. 49%&rarr;52% outranks 100%&rarr;95%</div>
       </div>
       <div class="caption" id="movers-snapshot-line"></div>
       <div class="movers-tables">

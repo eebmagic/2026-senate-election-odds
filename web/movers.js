@@ -75,11 +75,15 @@ function pickDayAtOrBefore(days, targetDate, excludeKey) {
   return best;
 }
 
-// "Change" ranks by the CURRENT leader's own win probability move (whichever
-// party leads today, its probability now vs. at the comparison snapshot)
-// relative to how far it had to move, not the raw percentage-point delta --
-// so a 49% -> 52% swing (toward a toss-up) outranks a 100% -> 95% one (still
-// a lock either way), even though the latter is the bigger raw move. Rows
+// Ranks by the CURRENT leader's own win probability move (whichever party
+// leads today, its probability now vs. at the comparison snapshot) relative
+// to how far it had to move, not the raw percentage-point delta -- so a
+// 49% -> 52% swing (toward a toss-up) outranks a 100% -> 95% one (still a
+// lock either way), even though the latter is the bigger raw move. That
+// relative figure (`deltaPct`) is used only to rank/select the top movers;
+// the "Change" column itself displays the raw percentage-point delta
+// (`deltaPp`), since a relative-percent figure reads as confusing next to
+// two probabilities that are themselves percentages -- see rowHtml. Rows
 // under 0.5pp of raw movement are dropped as noise first; a comparison
 // starting at exactly 0% has no defined ratio and is dropped too (it can't
 // happen in practice for a party that's currently leading). Independent
@@ -99,14 +103,14 @@ function computeMovers(currentRaces, previousRaces) {
     if (Math.abs(deltaPp) < MIN_DELTA_PP) continue;
     if (prevProb <= 0) continue;
     const deltaPct = (deltaPp / (prevProb * 100)) * 100;
-    movers.push({ race, party, prevProb, currProb, deltaPct });
+    movers.push({ race, party, prevProb, currProb, deltaPp, deltaPct });
   }
   movers.sort((a, b) => Math.abs(b.deltaPct) - Math.abs(a.deltaPct));
   return movers.slice(0, MAX_ROWS);
 }
 
-function rowHtml({ race, party, prevProb, currProb, deltaPct }) {
-  const gained = deltaPct > 0;
+function rowHtml({ race, party, prevProb, currProb, deltaPp }) {
+  const gained = deltaPp > 0;
   const cls = party === 'D' ? 'dem' : 'rep';
   const deltaCls = gained ? 'up' : 'down';
   const sign = gained ? '+' : '−';
@@ -126,7 +130,7 @@ function rowHtml({ race, party, prevProb, currProb, deltaPct }) {
     <div class="mover-prev">${(prevProb * 100).toFixed(1)}%</div>
     <div class="mover-arrow">&rarr;</div>
     <div class="mover-now">${(currProb * 100).toFixed(1)}%</div>
-    <div class="mover-delta ${deltaCls}">${sign}${Math.abs(deltaPct).toFixed(1)}%</div>
+    <div class="mover-delta ${deltaCls}">${sign}${Math.abs(deltaPp).toFixed(1)}</div>
   </${tag}>`;
 }
 
