@@ -25,6 +25,7 @@ import {
 } from './senate-shared.js';
 import { renderMap } from './map.js';
 import { renderMovers } from './movers.js';
+import { renderChamberChange } from './chamber-history.js';
 
 // The live data artifact, served from the Cloudflare R2 bucket (script.py
 // uploads it as latest.json every run) via a custom domain bound to the
@@ -253,6 +254,10 @@ function makeContestedSeg(r, fetchedAt) {
     href: r.kalshiUrl,
     color: colorForDemProb(raceAxisProb(r)),
     leadLabel: Math.round(leader.probability * 100),
+    // Mobile (segHtmlNarrow) shows one decimal place + "%" -- the wide desktop
+    // layout has room for every state's box to carry its own number, so it
+    // stays a bare whole-number percent (leadLabel) there.
+    leadLabelNarrow: (leader.probability * 100).toFixed(1) + '%',
     leadProb: leader.probability,
     leadParty: leader.party,
     showIndependentMark: isMaterialIndependent(r),
@@ -339,6 +344,18 @@ function groupGeometry(segments) {
   };
 }
 
+// One decimal place for the chamber-control gauge labels specifically --
+// more precision than fmtPct's whole-number rounding (used everywhere else:
+// seat bar, tooltips, ...), since this is the single top-level number the
+// page leads with. Mirrors fmtPct's near-0/near-100 edge-case guards at the
+// finer precision so a nonzero-but-tiny probability never displays as an
+// indistinguishable "0.0%"/"100.0%".
+function fmtGaugePct(rounded, p) {
+  if (rounded <= 0 && p > 0) return '<0.1%';
+  if (rounded >= 100 && p < 1) return '>99.9%';
+  return rounded.toFixed(1) + '%';
+}
+
 function computeVals(data) {
   const races = data.races || [];
   const dSolids = SOLID_SEATS.filter(s => seatPartyResolved(s) === 'D').sort((a, b) => a.state.localeCompare(b.state));
@@ -402,8 +419,8 @@ function computeVals(data) {
     contestedWrapFlex: CONTESTED_UNITS + ' 1 0%',
     demBlockTooltip, repBlockTooltip,
     demPct, repPct,
-    demPctLabel: 'Democratic ' + fmtPct(cm.demProbability),
-    repPctLabel: 'Republican ' + fmtPct(cm.repProbability),
+    demPctLabel: 'Democratic ' + fmtGaugePct(demPct, cm.demProbability),
+    repPctLabel: 'Republican ' + fmtGaugePct(repPct, cm.repProbability),
     controlsHref,
     fetchedAtLabel,
     failedStates: data.failedStates || []
@@ -415,8 +432,8 @@ function segHtmlWide(seg, i) {
     <a class="seg-wide" href="${escapeHtml(seg.href)}" target="_blank" rel="noopener noreferrer" style="background:${seg.color};" data-seg-index="${i}">
       <span class="seg-label-stack">
         <span class="seg-state">${escapeHtml(seg.state)}</span>
-        <span class="seg-pct">${seg.leadLabel}</span>
         <span class="seg-party">${seg.leadParty}</span>
+        <span class="seg-pct">${seg.leadLabel}</span>
       </span>
       ${seg.showIndependentMark ? '<span class="ind-mark ind-mark-h" role="img" aria-label="Independent polling above 10%">&#42;</span>' : ''}
       ${seg.showPendingMark ? '<span class="pending-mark-h pending-badge" title="Primary not yet decided">?</span>' : ''}
@@ -427,8 +444,8 @@ function segHtmlNarrow(seg, i) {
   return `
     <a class="seg-narrow" href="${escapeHtml(seg.href)}" target="_blank" rel="noopener noreferrer" style="background:${seg.color};" data-seg-index="${i}">
       <span class="seg-state">${escapeHtml(seg.stateName)}</span>
-      <span class="seg-pct">${seg.leadLabel}</span>
       <span class="seg-party">${seg.leadParty}</span>
+      <span class="seg-pct">${seg.leadLabelNarrow}</span>
       ${seg.showIndependentMark ? '<span class="ind-mark ind-mark-v" role="img" aria-label="Independent polling above 10%">&#42;</span>' : ''}
       ${seg.showPendingMark ? '<span class="pending-mark-v pending-badge" title="Primary not yet decided">?</span>' : ''}
     </a>`;
@@ -597,6 +614,7 @@ function render(data) {
   // Fire-and-forget: its own history fetches shouldn't gate the rest of the
   // page, and it manages its own section visibility/empty states.
   renderMovers(data);
+  renderChamberChange(data);
 }
 
 function showError(err) {

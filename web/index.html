@@ -56,7 +56,7 @@
   #status.error { color: #8a2a22; }
   #app { display: none; }
 
-  .section-heading { font-size: 15px; font-weight: 700; }
+  .section-heading { font-size: 19px; font-weight: 700; }
   .caption { font-size: 12px; color: #5b574f; }
 
   /* Chamber control gauge */
@@ -69,9 +69,26 @@
   .gauge-divider { position: absolute; left: 50%; top: -8px; bottom: -8px; width: 2px; background: #211f1c; transform: translateX(-1px); pointer-events: none; }
   .gauge-caption { font-size: 12px; color: #5b574f; margin-top: 8px; }
   /* Href set at render time (renderGauge in app.js); hidden until then. */
-  .gauge-header { display: flex; align-items: baseline; gap: 10px; }
+  .gauge-header { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
   .gauge-source { display: none; font-size: 12px; }
   .gauge-source[href] { display: inline-block; }
+  /* Pushed to the far right of the header (title/Kalshi-link stay left) --
+     filled in by chamber-history.js, which fetches the market's own history
+     independently of the main render; each span collapses to nothing via
+     :empty until (or unless) that resolves. */
+  .gauge-changes { display: flex; gap: 12px; margin-left: auto; flex-wrap: wrap; justify-content: flex-end; }
+  /* inline-flex + align-items: center (rather than a vertical-align nudge
+     on the badge) so the badge lines up with the text's true vertical
+     center regardless of font metrics. */
+  .gauge-change { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; font-weight: 600; color: #5b574f; }
+  .gauge-change:empty { display: none; }
+  .gauge-change.up { color: #0f8a3d; }
+  .gauge-change.down { color: #e01b12; }
+  /* Which party the change is measured for (see chamber-history.js -- always
+     the current leader, so this stays correct even if the lead flips). */
+  .gauge-change-badge { flex: none; display: inline-flex; align-items: center; justify-content: center; width: 14px; height: 14px; border-radius: 3px; font-size: 9px; font-weight: 800; color: #faf8f4; }
+  .gauge-change-badge.dem { background: #0044c9; }
+  .gauge-change-badge.rep { background: #d71f27; }
 
   /* Seat spectrum */
   .spectrum-section { margin-bottom: 52px; }
@@ -168,7 +185,14 @@
      across rows regardless of name length -- the pct/party that follow then
      land in the same spot on every row too. */
   .seg-narrow .seg-state { font-size: 10px; flex: 0 0 92px; text-align: right; white-space: nowrap; }
-  .seg-narrow .seg-pct { flex: 0 0 20px; text-align: right; }
+  /* Fixed-width (wide enough for "100.0%", the longest value this ever
+     renders) so the row's total content width -- and thus the state-name
+     column's alignment -- stays constant regardless of the actual value's
+     length. Left-aligned, since it's the trailing element now (state,
+     party, pct): right-aligning it would leave invisible padding *before*
+     the text, making the party-to-pct gap look bigger than the tight
+     state-to-party one even though the boxes are equally spaced. */
+  .seg-narrow .seg-pct { flex: 0 0 36px; text-align: left; white-space: nowrap; }
   .pending-badge { display: inline-flex; align-items: center; justify-content: center; width: 12px; height: 12px; border-radius: 50%; background: #faf8f4; border: 1.5px solid #211f1c; color: #211f1c; font-size: 9px; font-weight: 800; line-height: 1; pointer-events: none; }
   .ind-mark-v { position: absolute; top: 50%; left: 7px; transform: translateY(-24%); }
   .pending-mark-v { position: absolute; top: 50%; right: 4px; transform: translateY(-50%); }
@@ -261,16 +285,18 @@
   /* Biggest movers -- a dense table (state, leading candidate, before/after
      probability, change) rather than a candidate-vs-candidate card; column
      widths/colors below match the design mock (biggest-movers-mock.html).
-     "Change" ranks by the leader's move relative to their prior probability
-     (see movers.js), not raw percentage points -- so a 49% -> 52% swing
-     outranks a 100% -> 95% one. */
+     The top-10 selection/ranking is by the leader's move relative to their
+     prior probability (see movers.js) -- so a 49% -> 52% swing outranks a
+     100% -> 95% one -- but the "Change" column itself always displays the
+     raw percentage-point delta, since a relative-percent figure reads as
+     confusing next to two probabilities that are themselves percentages. */
   .movers-section { margin-top: 48px; }
-  .movers-header { display: flex; justify-content: space-between; align-items: baseline; gap: 16px; flex-wrap: wrap; }
-  #movers-snapshot-line { margin: 2px 0 20px; }
+  .movers-header { display: flex; justify-content: space-between; align-items: baseline; gap: 16px; flex-wrap: wrap; margin-bottom: 20px; }
   .movers-tables { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; }
+  .movers-footnote { margin-top: 20px; }
   .movers-table-header { display: flex; align-items: baseline; gap: 8px; margin-bottom: 18px; flex-wrap: wrap; }
-  .movers-table-title { font-size: 13px; font-weight: 700; }
-  .movers-table-subtitle { font-size: 11px; font-weight: 400; color: #5b574f; }
+  .movers-table-title { font-size: 16px; font-weight: 700; }
+  .movers-table-subtitle { font-size: 13px; font-weight: 400; color: #5b574f; }
   /* 1st column is 104px -- wide enough for the longest state name in play
      ("South Carolina"/"North Carolina") on one line. Desktop always shows
      the full name; mobile shows the 2-letter code instead (see .mover-state
@@ -384,6 +410,10 @@
       <div class="gauge-header">
         <div class="section-heading">Chamber control</div>
         <a class="gauge-source" id="gauge-source-link" target="_blank" rel="noopener noreferrer">Kalshi &#8599;</a>
+        <div class="gauge-changes">
+          <span class="gauge-change" id="gauge-change-today"></span>
+          <span class="gauge-change" id="gauge-change-week"></span>
+        </div>
       </div>
       <div class="gauge-wrap" id="gauge-wrap">
         <div class="gauge-bar">
@@ -423,9 +453,7 @@
     <div class="movers-section" id="movers-section" style="display: none;">
       <div class="movers-header">
         <div class="section-heading">Biggest movers</div>
-        <div class="caption">Change in the leading candidate's win probability, relative to its previous value — e.g. 49%&rarr;52% ranks above 100%&rarr;95%</div>
       </div>
-      <div class="caption" id="movers-snapshot-line"></div>
       <div class="movers-tables">
         <div class="movers-table">
           <div class="movers-table-header">
@@ -464,6 +492,7 @@
           </div>
         </div>
       </div>
+      <div class="caption movers-footnote">Change in the leading candidate's win probability, in percentage points — ranked by size of the move relative to where it started, e.g. 49%&rarr;52% outranks 100%&rarr;95%</div>
     </div>
 
   </div>
