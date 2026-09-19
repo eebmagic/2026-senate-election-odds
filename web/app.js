@@ -340,6 +340,18 @@ function groupGeometry(segments) {
   };
 }
 
+// One decimal place for the chamber-control gauge labels specifically --
+// more precision than fmtPct's whole-number rounding (used everywhere else:
+// seat bar, tooltips, ...), since this is the single top-level number the
+// page leads with. Mirrors fmtPct's near-0/near-100 edge-case guards at the
+// finer precision so a nonzero-but-tiny probability never displays as an
+// indistinguishable "0.0%"/"100.0%".
+function fmtGaugePct(rounded, p) {
+  if (rounded <= 0 && p > 0) return '<0.1%';
+  if (rounded >= 100 && p < 1) return '>99.9%';
+  return rounded.toFixed(1) + '%';
+}
+
 function computeVals(data) {
   const races = data.races || [];
   const dSolids = SOLID_SEATS.filter(s => seatPartyResolved(s) === 'D').sort((a, b) => a.state.localeCompare(b.state));
@@ -403,8 +415,8 @@ function computeVals(data) {
     contestedWrapFlex: CONTESTED_UNITS + ' 1 0%',
     demBlockTooltip, repBlockTooltip,
     demPct, repPct,
-    demPctLabel: 'Democratic ' + fmtPct(cm.demProbability),
-    repPctLabel: 'Republican ' + fmtPct(cm.repProbability),
+    demPctLabel: 'Democratic ' + fmtGaugePct(demPct, cm.demProbability),
+    repPctLabel: 'Republican ' + fmtGaugePct(repPct, cm.repProbability),
     controlsHref,
     fetchedAtLabel,
     failedStates: data.failedStates || []
