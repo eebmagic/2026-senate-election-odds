@@ -69,9 +69,18 @@
   .gauge-divider { position: absolute; left: 50%; top: -8px; bottom: -8px; width: 2px; background: #211f1c; transform: translateX(-1px); pointer-events: none; }
   .gauge-caption { font-size: 12px; color: #5b574f; margin-top: 8px; }
   /* Href set at render time (renderGauge in app.js); hidden until then. */
-  .gauge-header { display: flex; align-items: baseline; gap: 10px; }
+  .gauge-header { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
   .gauge-source { display: none; font-size: 12px; }
   .gauge-source[href] { display: inline-block; }
+  /* Pushed to the far right of the header (title/Kalshi-link stay left) --
+     filled in by chamber-history.js, which fetches the market's own history
+     independently of the main render; each span collapses to nothing via
+     :empty until (or unless) that resolves. */
+  .gauge-changes { display: flex; gap: 12px; margin-left: auto; flex-wrap: wrap; justify-content: flex-end; }
+  .gauge-change { font-size: 12px; font-weight: 600; color: #5b574f; }
+  .gauge-change:empty { display: none; }
+  .gauge-change.up { color: #0f8a3d; }
+  .gauge-change.down { color: #e01b12; }
 
   /* Seat spectrum */
   .spectrum-section { margin-bottom: 52px; }
@@ -386,6 +395,10 @@
       <div class="gauge-header">
         <div class="section-heading">Chamber control</div>
         <a class="gauge-source" id="gauge-source-link" target="_blank" rel="noopener noreferrer">Kalshi &#8599;</a>
+        <div class="gauge-changes">
+          <span class="gauge-change" id="gauge-change-today"></span>
+          <span class="gauge-change" id="gauge-change-week"></span>
+        </div>
       </div>
       <div class="gauge-wrap" id="gauge-wrap">
         <div class="gauge-bar">
