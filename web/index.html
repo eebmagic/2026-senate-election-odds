@@ -261,10 +261,9 @@
   /* Biggest movers -- a dense table (state, leading candidate, before/after
      probability, change) rather than a candidate-vs-candidate card; column
      widths/colors below match the design mock (biggest-movers-mock.html).
-     Shared by two sections (#movers-section, #relative-movers-section) that
-     render off the same fetched snapshots -- see movers.js -- but rank rows
-     by a different "change" metric (raw percentage points vs. percent of
-     the prior probability), so all rules below are metric-agnostic. */
+     "Change" ranks by the leader's move relative to their prior probability
+     (see movers.js), not raw percentage points -- so a 49% -> 52% swing
+     outranks a 100% -> 95% one. */
   .movers-section { margin-top: 48px; }
   .movers-header { display: flex; justify-content: space-between; align-items: baseline; gap: 16px; flex-wrap: wrap; }
   #movers-snapshot-line { margin: 2px 0 20px; }
@@ -424,7 +423,7 @@
     <div class="movers-section" id="movers-section" style="display: none;">
       <div class="movers-header">
         <div class="section-heading">Biggest movers</div>
-        <div class="caption">Change in the leading candidate's win probability, in percentage points</div>
+        <div class="caption">Change in the leading candidate's win probability, relative to how far they had to move — e.g. 49%&rarr;52% ranks above 100%&rarr;95%</div>
       </div>
       <div class="caption" id="movers-snapshot-line"></div>
       <div class="movers-tables">
@@ -462,51 +461,6 @@
           <div class="movers-body" id="movers-week-body">
             <div class="movers-rows" id="movers-week-rows"></div>
             <div class="movers-empty" id="movers-week-empty"></div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <div class="movers-section" id="relative-movers-section" style="display: none;">
-      <div class="movers-header">
-        <div class="section-heading">Biggest relative movers</div>
-        <div class="caption">Change in the leading candidate's win probability, relative to how far they had to move — e.g. 49%&rarr;52% ranks above 100%&rarr;95%</div>
-      </div>
-      <div class="movers-tables">
-        <div class="movers-table">
-          <div class="movers-table-header">
-            <span class="movers-table-title">Today</span>
-            <span class="movers-table-subtitle" id="relmovers-today-vs"></span>
-          </div>
-          <div class="movers-col-header">
-            <div>State</div>
-            <div>Candidate</div>
-            <div><span class="full-label">Yesterday</span><span class="short-label">Prior</span></div>
-            <div></div>
-            <div>Now</div>
-            <div>Change</div>
-          </div>
-          <div class="movers-body" id="relmovers-today-body">
-            <div class="movers-rows" id="relmovers-today-rows"></div>
-            <div class="movers-empty" id="relmovers-today-empty"></div>
-          </div>
-        </div>
-        <div class="movers-table">
-          <div class="movers-table-header">
-            <span class="movers-table-title">Last 7 days</span>
-            <span class="movers-table-subtitle" id="relmovers-week-vs"></span>
-          </div>
-          <div class="movers-col-header">
-            <div>State</div>
-            <div>Candidate</div>
-            <div><span class="full-label">7 days ago</span><span class="short-label">7d ago</span></div>
-            <div></div>
-            <div>Now</div>
-            <div>Change</div>
-          </div>
-          <div class="movers-body" id="relmovers-week-body">
-            <div class="movers-rows" id="relmovers-week-rows"></div>
-            <div class="movers-empty" id="relmovers-week-empty"></div>
           </div>
         </div>
       </div>

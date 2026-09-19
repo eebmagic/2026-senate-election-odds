@@ -10,9 +10,7 @@
 // browser can't discover snapshot keys on its own. This module fetches that
 // index once, looks up the closest available day at or before each target
 // date, fetches just those two snapshots, and diffs each race's leading
-// candidate's own win probability against the currently-displayed data --
-// once per absolute (percentage-point) ranking and once per relative
-// (percent-of-prior) ranking, off the same fetched pair.
+// candidate's own win probability against the currently-displayed data.
 //
 // Design (table layout, column widths, badge/color treatment) follows
 // biggest-movers-mock.html, a design-agent mock the repo owner reviewed and
@@ -31,27 +29,14 @@ const SNAPSHOT_BASE_URL = 'https://election-data.ebolton.site/';
 
 const MAX_ROWS = 10;
 // Below this, a move is noise (e.g. price rounding) rather than a real swing
-// -- applies to both tables (the relative table ranks by percent-of-prior,
-// but still needs a percentage-point floor so a rounding blip on a tiny
-// base, e.g. 0.1% -> 0.6%, can't rank as a "500% move").
+// -- a percentage-point floor, checked before the relative ranking below, so
+// a rounding blip on a tiny base (e.g. 0.1% -> 0.6%) can't rank as a "500%
+// move".
 const MIN_DELTA_PP = 0.5;
 
-// One entry per comparison window (today/7-day). Each window renders into
-// two tables that share the same pair of snapshots: `abs` (ranked by raw
-// percentage-point change) and `rel` (ranked by change relative to the
-// prior probability, so a 49% -> 52% swing outranks a 100% -> 95% one --
-// the same 5-ish point move matters more the closer the race already was).
-const WINDOWS = [
-  {
-    daysAgo: 1,
-    abs: { bodyId: 'movers-today-body', rowsId: 'movers-today-rows', emptyId: 'movers-today-empty', vsId: 'movers-today-vs' },
-    rel: { bodyId: 'relmovers-today-body', rowsId: 'relmovers-today-rows', emptyId: 'relmovers-today-empty', vsId: 'relmovers-today-vs' }
-  },
-  {
-    daysAgo: 7,
-    abs: { bodyId: 'movers-week-body', rowsId: 'movers-week-rows', emptyId: 'movers-week-empty', vsId: 'movers-week-vs' },
-    rel: { bodyId: 'relmovers-week-body', rowsId: 'relmovers-week-rows', emptyId: 'relmovers-week-empty', vsId: 'relmovers-week-vs' }
-  }
+const TABLES = [
+  { daysAgo: 1, bodyId: 'movers-today-body', rowsId: 'movers-today-rows', emptyId: 'movers-today-empty', vsId: 'movers-today-vs' },
+  { daysAgo: 7, bodyId: 'movers-week-body', rowsId: 'movers-week-rows', emptyId: 'movers-week-empty', vsId: 'movers-week-vs' }
 ];
 
 async function fetchJson(url) {
@@ -88,17 +73,19 @@ function pickDayAtOrBefore(days, targetDate, excludeKey) {
   return best;
 }
 
-// Every race with a same-state match in both snapshots, as the CURRENT
-// leader's own win probability (whichever party leads today) now vs. at the
-// comparison snapshot -- not a Democratic-probability delta -- so "the
-// leader gained/slipped" always means exactly what it says. Independent
+// "Change" ranks by the CURRENT leader's own win probability move (whichever
+// party leads today, its probability now vs. at the comparison snapshot)
+// relative to how far it had to move, not the raw percentage-point delta --
+// so a 49% -> 52% swing (toward a toss-up) outranks a 100% -> 95% one (still
+// a lock either way), even though the latter is the bigger raw move. Rows
+// under 0.5pp of raw movement are dropped as noise first; a comparison
+// starting at exactly 0% has no defined ratio and is dropped too (it can't
+// happen in practice for a party that's currently leading). Independent
 // leaders aren't tracked (this only ever compares demProbability vs.
-// repProbability, no otherTickers), so only D/R ever appear here. Both the
-// absolute and relative tables rank a filtered/sorted view of this same
-// list -- see `computeAbsoluteMovers`/`computeRelativeMovers` below.
-function leaderDeltas(currentRaces, previousRaces) {
+// repProbability, no otherTickers), so only D/R ever appear here.
+function computeMovers(currentRaces, previousRaces) {
   const prevByState = new Map(previousRaces.map(r => [r.state, r]));
-  const deltas = [];
+  const movers = [];
   for (const race of currentRaces) {
     const prev = prevByState.get(race.state);
     if (!prev) continue; // race didn't exist yet in the comparison snapshot
@@ -108,37 +95,16 @@ function leaderDeltas(currentRaces, previousRaces) {
     const currProb = demLeads ? race.demProbability : race.repProbability;
     const deltaPp = (currProb - prevProb) * 100;
     if (Math.abs(deltaPp) < MIN_DELTA_PP) continue;
-    deltas.push({ race, party, prevProb, currProb, deltaPp });
+    if (prevProb <= 0) continue;
+    const deltaPct = (deltaPp / (prevProb * 100)) * 100;
+    movers.push({ race, party, prevProb, currProb, deltaPct });
   }
-  return deltas;
-}
-
-// Ranked by raw percentage-point change -- the original "biggest movers"
-// metric.
-function computeAbsoluteMovers(currentRaces, previousRaces) {
-  const movers = leaderDeltas(currentRaces, previousRaces);
-  movers.sort((a, b) => Math.abs(b.deltaPp) - Math.abs(a.deltaPp));
-  return movers.slice(0, MAX_ROWS);
-}
-
-// Ranked by change relative to the prior probability (deltaPp / prevProb),
-// so equal-sized point moves rank higher the closer the race already was --
-// a 49% -> 52% swing (a jump toward a toss-up) outranks a 100% -> 95% one
-// (still a lock either way), even though the latter is a bigger raw move.
-// A comparison starting at exactly 0% has no defined ratio and is dropped
-// (it can never happen for a party that's currently leading in practice).
-function computeRelativeMovers(currentRaces, previousRaces) {
-  const movers = leaderDeltas(currentRaces, previousRaces)
-    .filter(m => m.prevProb > 0)
-    .map(m => ({ ...m, deltaPct: (m.deltaPp / (m.prevProb * 100)) * 100 }));
   movers.sort((a, b) => Math.abs(b.deltaPct) - Math.abs(a.deltaPct));
   return movers.slice(0, MAX_ROWS);
 }
 
-function rowHtml(mover, deltaField, deltaSuffix) {
-  const { race, party, prevProb, currProb } = mover;
-  const deltaValue = mover[deltaField];
-  const gained = deltaValue > 0;
+function rowHtml({ race, party, prevProb, currProb, deltaPct }) {
+  const gained = deltaPct > 0;
   const cls = party === 'D' ? 'dem' : 'rep';
   const deltaCls = gained ? 'up' : 'down';
   const sign = gained ? '+' : '−';
@@ -158,14 +124,13 @@ function rowHtml(mover, deltaField, deltaSuffix) {
     <div class="mover-prev">${Math.round(prevProb * 100)}%</div>
     <div class="mover-arrow">&rarr;</div>
     <div class="mover-now">${Math.round(currProb * 100)}%</div>
-    <div class="mover-delta ${deltaCls}">${sign}${Math.abs(deltaValue).toFixed(1)}${deltaSuffix}</div>
+    <div class="mover-delta ${deltaCls}">${sign}${Math.abs(deltaPct).toFixed(1)}%</div>
   </${tag}>`;
 }
 
-function renderTable(rowsId, emptyId, movers, deltaField, deltaSuffix, emptyMessage) {
+function renderTable(rowsId, emptyId, movers, emptyMessage) {
   const rowsEl = document.getElementById(rowsId);
   const emptyEl = document.getElementById(emptyId);
-  if (!rowsEl || !emptyEl) return;
   if (!movers.length) {
     rowsEl.innerHTML = '';
     emptyEl.textContent = emptyMessage;
@@ -173,10 +138,10 @@ function renderTable(rowsId, emptyId, movers, deltaField, deltaSuffix, emptyMess
     return;
   }
   emptyEl.style.display = 'none';
-  rowsEl.innerHTML = movers.map(m => rowHtml(m, deltaField, deltaSuffix)).join('');
+  rowsEl.innerHTML = movers.map(rowHtml).join('');
 }
 
-// Desktop shows a pair of tables side by side, so a short table (fewer
+// Desktop shows the two tables side by side, so a short table (fewer
 // notable movers) shouldn't end up visibly shorter than its neighbor.
 // min-height is reset before measuring so a re-render (e.g. next data
 // refresh) doesn't compound on the previous equalization, and the narrow
@@ -190,9 +155,8 @@ function equalizeBodyHeights(ids) {
 }
 
 export async function renderMovers(data) {
-  const absSection = document.getElementById('movers-section');
-  const relSection = document.getElementById('relative-movers-section');
-  if (!absSection && !relSection) return;
+  const section = document.getElementById('movers-section');
+  if (!section) return;
   try {
     const index = await fetchJson(SNAPSHOT_INDEX_URL);
     const days = index.days || [];
@@ -207,41 +171,32 @@ export async function renderMovers(data) {
       snapshotLine.textContent = `Snapshot taken ${formatDateLabel(currentDate)}, ${data.fetchedAt.slice(0, 4)} ${time} UTC.`;
     }
 
-    for (const w of WINDOWS) {
-      const targetDate = shiftDate(currentDate, -w.daysAgo);
+    for (const t of TABLES) {
+      const vsEl = document.getElementById(t.vsId);
+      const targetDate = shiftDate(currentDate, -t.daysAgo);
       const comparisonEntry = pickDayAtOrBefore(days, targetDate, data.snapshotKey);
-      const vsText = comparisonEntry ? `changes since ${formatDateLabel(comparisonEntry.date)}` : '';
-      const absVsEl = document.getElementById(w.abs.vsId);
-      const relVsEl = document.getElementById(w.rel.vsId);
-      if (absVsEl) absVsEl.textContent = vsText;
-      if (relVsEl) relVsEl.textContent = vsText;
-
       if (!comparisonEntry) {
-        renderTable(w.abs.rowsId, w.abs.emptyId, [], 'deltaPp', '', 'Not enough history yet.');
-        renderTable(w.rel.rowsId, w.rel.emptyId, [], 'deltaPct', '%', 'Not enough history yet.');
+        if (vsEl) vsEl.textContent = '';
+        renderTable(t.rowsId, t.emptyId, [], 'Not enough history yet.');
         continue;
       }
+      if (vsEl) vsEl.textContent = `changes since ${formatDateLabel(comparisonEntry.date)}`;
       try {
         const snapshotUrl = SNAPSHOT_BASE_URL
           + comparisonEntry.key.split('/').map(encodeURIComponent).join('/');
         const previous = await fetchJson(snapshotUrl);
-        const previousRaces = previous.races || [];
-        renderTable(w.abs.rowsId, w.abs.emptyId, computeAbsoluteMovers(currentRaces, previousRaces), 'deltaPp', '', 'No notable movement.');
-        renderTable(w.rel.rowsId, w.rel.emptyId, computeRelativeMovers(currentRaces, previousRaces), 'deltaPct', '%', 'No notable movement.');
+        const movers = computeMovers(currentRaces, previous.races || []);
+        renderTable(t.rowsId, t.emptyId, movers, 'No notable movement.');
       } catch (e) {
-        renderTable(w.abs.rowsId, w.abs.emptyId, [], 'deltaPp', '', 'Unable to load comparison data.');
-        renderTable(w.rel.rowsId, w.rel.emptyId, [], 'deltaPct', '%', 'Unable to load comparison data.');
+        renderTable(t.rowsId, t.emptyId, [], 'Unable to load comparison data.');
       }
     }
-    if (absSection) absSection.style.display = 'block';
-    if (relSection) relSection.style.display = 'block';
-    equalizeBodyHeights(WINDOWS.map(w => w.abs.bodyId));
-    equalizeBodyHeights(WINDOWS.map(w => w.rel.bodyId));
+    section.style.display = 'block';
+    equalizeBodyHeights(TABLES.map(t => t.bodyId));
   } catch (e) {
     // No snapshot-index.json yet (fresh deploy, ahead of the next script.py
-    // run) or it failed to load -- hide both sections rather than show
+    // run) or it failed to load -- hide the section rather than show two
     // permanently-broken tables.
-    if (absSection) absSection.style.display = 'none';
-    if (relSection) relSection.style.display = 'none';
+    section.style.display = 'none';
   }
 }
