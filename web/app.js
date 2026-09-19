@@ -24,6 +24,7 @@ import {
   positionTooltip
 } from './senate-shared.js';
 import { renderMap } from './map.js';
+import { renderMovers } from './movers.js';
 
 // The live data artifact, served from the Cloudflare R2 bucket (script.py
 // uploads it as latest.json every run) via a custom domain bound to the
@@ -593,6 +594,9 @@ function render(data) {
   window.__mark('renderNarrowBar');
   renderMap(vals.races, data.fetchedAt);
   window.__mark('renderMap() sync return');
+  // Fire-and-forget: its own history fetches shouldn't gate the rest of the
+  // page, and it manages its own section visibility/empty states.
+  renderMovers(data);
 }
 
 function showError(err) {

@@ -156,6 +156,29 @@ def fetch_all(event_tickers: list[str]):
     return discovery, failures
 
 
+def refresh_snapshot_index(r2: r2_store.R2Store) -> None:
+    """Rebuild snapshot-index.json from a live listing of snapshots/ so the UI
+    (the biggest-movers tables) can look up "yesterday" / "7 days ago" by
+    calendar date without the bucket supporting the S3 list API on its public
+    domain. One entry per UTC calendar day -- that day's last snapshot --
+    since the UI only ever wants a day's closing snapshot, not every run.
+    Best-effort: a failure here doesn't affect latest.json/snapshots/, so
+    it's logged and swallowed rather than failing the run."""
+    try:
+        keys = r2.list_snapshot_keys()
+        last_by_date = {}
+        for key in keys:
+            fetched_at = r2_store.snapshot_fetched_at(key)
+            date = fetched_at[:10]  # fetchedAt is always UTC ("...Z"), so this is the UTC date
+            if date not in last_by_date or fetched_at > last_by_date[date]["fetchedAt"]:
+                last_by_date[date] = {"key": key, "fetchedAt": fetched_at}
+        days = [{"date": date, **entry} for date, entry in sorted(last_by_date.items())]
+        r2.put_json(r2_store.INDEX_KEY, {"days": days})
+        print(f"Updated s3://{r2.bucket}/{r2_store.INDEX_KEY} ({len(days)} days)")
+    except Exception as e:  # noqa: BLE001
+        print(f"warning: failed to refresh {r2_store.INDEX_KEY}: {e}", file=sys.stderr)
+
+
 def snapshot_path_for(snapshot_dir: Path, now: datetime) -> Path:
     """This run's uniquely named path under `snapshot_dir` (an immutable
     audit trail -- every run's output is kept, not just the newest)."""
@@ -284,6 +307,7 @@ def main():
                   f"{r2_store.LATEST_KEY} left unchanged.", file=sys.stderr)
             return 3
         print(f"Uploaded s3://{r2.bucket}/{snap_key}")
+        refresh_snapshot_index(r2)
 
         if healthy or args.force_promote:
             r2.put_json(r2_store.LATEST_KEY, output)
