@@ -269,8 +269,10 @@
   .movers-table-title { font-size: 13px; font-weight: 700; }
   .movers-table-subtitle { font-size: 11px; font-weight: 400; color: #5b574f; }
   /* 1st column is 104px -- wide enough for the longest state name in play
-     ("South Carolina"/"North Carolina") on one line; full names are shown
-     always (not abbreviated to a 2-letter code), including on mobile below.
+     ("South Carolina"/"North Carolina") on one line. Desktop always shows
+     the full name; mobile shows the 2-letter code instead (see .mover-state
+     and the media query below), since there isn't room for the full name
+     alongside a readable candidate column at that width.
      3rd column is 80px (vs. 40px for the other value columns) so the 7-day
      table's "7 days ago" header fits on one line -- see the mobile override
      below, which shrinks it back down and allows wrapping since there isn't
@@ -280,8 +282,9 @@
   .movers-col-header div:nth-child(3) { text-align: right; }
   .movers-col-header div:nth-child(5) { text-align: left; }
   /* Full label on desktop; the mobile override below swaps to short-label --
-     both columns are too narrow there to fit "Yesterday"/"7 days ago". */
-  .movers-col-header .short-label { display: none; }
+     both columns are too narrow there to fit "Yesterday"/"7 days ago", and
+     the state column is 2-letter-code-only on mobile (see .mover-state). */
+  .movers-col-header .short-label, .mover-state .short-label { display: none; }
   .movers-col-header div:nth-child(6) { text-align: center; }
   /* min-height is set inline (movers.js) so the two tables match height on
      desktop even when one has fewer notable movers than the other; the
@@ -319,16 +322,23 @@
   @media (max-width: 719px) {
     .movers-tables { grid-template-columns: 1fr; gap: 24px; }
     .movers-body { min-height: 0 !important; }
-    /* State names stay full-word even here (a stacked table has more width
-       to itself than half of a desktop pair does) -- the other, purely
-       numeric columns shrink further to make room and avoid overflowing
-       the ~326px content width at this breakpoint. */
-    .movers-col-header, .mover-row { grid-template-columns: 98px 1fr 32px 10px 32px 40px; gap: 6px; }
+    /* State is the 2-letter code here (not the full name) to leave room for
+       the candidate column at this width; desktop always shows the full
+       name -- see .mover-state above. */
+    .movers-col-header, .mover-row { grid-template-columns: 28px 1fr 40px 14px 40px 46px; gap: 6px; }
     /* No room for "Yesterday"/"7 days ago" at this width -- swap to the
        short label instead (still one line, no more wrapping/overlap). */
     .movers-col-header { white-space: nowrap; }
     .movers-col-header .full-label { display: none; }
     .movers-col-header .short-label { display: inline; }
+    .mover-state .full-label { display: none; }
+    .mover-state .short-label { display: inline; }
+    /* Centered (desktop keeps left/right/center per-column, matching each
+       column's data alignment) so a header word wider than its column
+       overflows evenly on both sides instead of running into one neighbor. */
+    .movers-col-header div,
+    .movers-col-header div:nth-child(3),
+    .movers-col-header div:nth-child(5) { text-align: center; }
   }
 
   /* Repo link, pinned to the viewport's top-right corner (outside #page's
@@ -416,7 +426,7 @@
             <span class="movers-table-subtitle" id="movers-today-vs"></span>
           </div>
           <div class="movers-col-header">
-            <div>State</div>
+            <div><span class="full-label">State</span><span class="short-label">St</span></div>
             <div>Candidate</div>
             <div><span class="full-label">Yesterday</span><span class="short-label">Prior</span></div>
             <div></div>
@@ -434,7 +444,7 @@
             <span class="movers-table-subtitle" id="movers-week-vs"></span>
           </div>
           <div class="movers-col-header">
-            <div>State</div>
+            <div><span class="full-label">State</span><span class="short-label">St</span></div>
             <div>Candidate</div>
             <div><span class="full-label">7 days ago</span><span class="short-label">7d ago</span></div>
             <div></div>

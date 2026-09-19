@@ -98,6 +98,7 @@ function rowHtml({ race, party, prevProb, currProb, deltaPp }) {
   const cls = party === 'D' ? 'dem' : 'rep';
   const deltaCls = gained ? 'up' : 'down';
   const sign = gained ? '+' : '−';
+  const stateCode = escapeHtml(race.state);
   const stateName = escapeHtml(STATE_NAMES[race.state] || race.state);
   const name = escapeHtml((party === 'D' ? race.demCandidate : race.repCandidate) || party);
   const tag = race.kalshiUrl ? 'a' : 'div';
@@ -105,7 +106,7 @@ function rowHtml({ race, party, prevProb, currProb, deltaPp }) {
     ? ` href="${escapeHtml(race.kalshiUrl)}" target="_blank" rel="noopener noreferrer"`
     : '';
   return `<${tag} class="mover-row ${cls}"${linkAttrs}>
-    <div class="mover-state">${stateName}</div>
+    <div class="mover-state"><span class="full-label">${stateName}</span><span class="short-label">${stateCode}</span></div>
     <div class="mover-candidate">
       <span class="mover-badge ${cls}">${party}</span>
       <span class="mover-name ${cls}">${name}</span>
