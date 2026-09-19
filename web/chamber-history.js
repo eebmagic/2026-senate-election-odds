@@ -44,17 +44,23 @@ const WINDOWS = [
   { daysAgo: 7, elId: 'gauge-change-week', label: '7 days ago' }
 ];
 
-function renderChange(elId, deltaPp, label) {
+// `party` is whichever party the delta is measured for (see
+// renderChamberChange -- always the CURRENT leader, so this stays correct
+// even if control of the lead flips). Shown as a small colored badge so the
+// reader doesn't have to guess which party's probability moved, matching
+// the badge convention in the "Biggest movers" tables.
+function renderChange(elId, deltaPp, label, party) {
   const el = document.getElementById(elId);
   if (!el) return;
   if (deltaPp == null) {
-    el.textContent = '';
+    el.innerHTML = '';
     el.className = 'gauge-change';
     return;
   }
   const gained = deltaPp > 0;
   const sign = gained ? '+' : deltaPp < 0 ? '−' : '±';
-  el.textContent = `${sign}${Math.abs(deltaPp).toFixed(1)} vs ${label}`;
+  const cls = party === 'D' ? 'dem' : 'rep';
+  el.innerHTML = `<span class="gauge-change-badge ${cls}">${party}</span>${sign}${Math.abs(deltaPp).toFixed(1)} vs ${label}`;
   el.className = 'gauge-change' + (deltaPp === 0 ? '' : gained ? ' up' : ' down');
 }
 
@@ -64,12 +70,13 @@ export async function renderChamberChange(data) {
   const currentDate = (data.fetchedAt || '').slice(0, 10);
   const demLeads = (cm.demProbability || 0) >= (cm.repProbability || 0);
   const currProb = demLeads ? cm.demProbability : cm.repProbability;
+  const party = demLeads ? 'D' : 'R';
 
   let days;
   try {
     days = (await fetchJson(SNAPSHOT_INDEX_URL)).days || [];
   } catch (e) {
-    for (const w of WINDOWS) renderChange(w.elId, null, w.label);
+    for (const w of WINDOWS) renderChange(w.elId, null, w.label, party);
     return;
   }
 
@@ -77,20 +84,20 @@ export async function renderChamberChange(data) {
     const targetDate = shiftDate(currentDate, -w.daysAgo);
     const entry = pickDayAtOrBefore(days, targetDate, data.snapshotKey);
     if (!entry) {
-      renderChange(w.elId, null, w.label);
+      renderChange(w.elId, null, w.label, party);
       return;
     }
     try {
       const snapshotUrl = SNAPSHOT_BASE_URL + entry.key.split('/').map(encodeURIComponent).join('/');
       const previousCm = (await fetchJson(snapshotUrl)).controlsMarket;
       if (!previousCm) {
-        renderChange(w.elId, null, w.label);
+        renderChange(w.elId, null, w.label, party);
         return;
       }
       const prevProb = demLeads ? previousCm.demProbability : previousCm.repProbability;
-      renderChange(w.elId, (currProb - prevProb) * 100, w.label);
+      renderChange(w.elId, (currProb - prevProb) * 100, w.label, party);
     } catch (e) {
-      renderChange(w.elId, null, w.label);
+      renderChange(w.elId, null, w.label, party);
     }
   }));
 }
