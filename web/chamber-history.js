@@ -60,7 +60,7 @@ function renderChange(elId, deltaPp, label, party) {
   const gained = deltaPp > 0;
   const sign = gained ? '+' : deltaPp < 0 ? '−' : '±';
   const cls = party === 'D' ? 'dem' : 'rep';
-  el.innerHTML = `<span class="gauge-change-badge ${cls}">${party}</span>${sign}${Math.abs(deltaPp).toFixed(1)} vs ${label}`;
+  el.innerHTML = `<span class="gauge-change-badge ${cls}">${party}</span><span>${sign}${Math.abs(deltaPp).toFixed(1)} vs ${label}</span>`;
   el.className = 'gauge-change' + (deltaPp === 0 ? '' : gained ? ' up' : ' down');
 }
 

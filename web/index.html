@@ -77,13 +77,16 @@
      independently of the main render; each span collapses to nothing via
      :empty until (or unless) that resolves. */
   .gauge-changes { display: flex; gap: 12px; margin-left: auto; flex-wrap: wrap; justify-content: flex-end; }
-  .gauge-change { font-size: 12px; font-weight: 600; color: #5b574f; }
+  /* inline-flex + align-items: center (rather than a vertical-align nudge
+     on the badge) so the badge lines up with the text's true vertical
+     center regardless of font metrics. */
+  .gauge-change { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; font-weight: 600; color: #5b574f; }
   .gauge-change:empty { display: none; }
   .gauge-change.up { color: #0f8a3d; }
   .gauge-change.down { color: #e01b12; }
   /* Which party the change is measured for (see chamber-history.js -- always
      the current leader, so this stays correct even if the lead flips). */
-  .gauge-change-badge { display: inline-flex; align-items: center; justify-content: center; width: 14px; height: 14px; border-radius: 3px; font-size: 9px; font-weight: 800; color: #faf8f4; margin-right: 4px; vertical-align: -2px; }
+  .gauge-change-badge { flex: none; display: inline-flex; align-items: center; justify-content: center; width: 14px; height: 14px; border-radius: 3px; font-size: 9px; font-weight: 800; color: #faf8f4; }
   .gauge-change-badge.dem { background: #0044c9; }
   .gauge-change-badge.rep { background: #d71f27; }
 
