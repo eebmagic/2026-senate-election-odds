@@ -254,6 +254,10 @@ function makeContestedSeg(r, fetchedAt) {
     href: r.kalshiUrl,
     color: colorForDemProb(raceAxisProb(r)),
     leadLabel: Math.round(leader.probability * 100),
+    // Mobile (segHtmlNarrow) shows one decimal place + "%" -- the wide desktop
+    // layout has room for every state's box to carry its own number, so it
+    // stays a bare whole-number percent (leadLabel) there.
+    leadLabelNarrow: (leader.probability * 100).toFixed(1) + '%',
     leadProb: leader.probability,
     leadParty: leader.party,
     showIndependentMark: isMaterialIndependent(r),
@@ -428,8 +432,8 @@ function segHtmlWide(seg, i) {
     <a class="seg-wide" href="${escapeHtml(seg.href)}" target="_blank" rel="noopener noreferrer" style="background:${seg.color};" data-seg-index="${i}">
       <span class="seg-label-stack">
         <span class="seg-state">${escapeHtml(seg.state)}</span>
-        <span class="seg-pct">${seg.leadLabel}</span>
         <span class="seg-party">${seg.leadParty}</span>
+        <span class="seg-pct">${seg.leadLabel}</span>
       </span>
       ${seg.showIndependentMark ? '<span class="ind-mark ind-mark-h" role="img" aria-label="Independent polling above 10%">&#42;</span>' : ''}
       ${seg.showPendingMark ? '<span class="pending-mark-h pending-badge" title="Primary not yet decided">?</span>' : ''}
@@ -440,8 +444,8 @@ function segHtmlNarrow(seg, i) {
   return `
     <a class="seg-narrow" href="${escapeHtml(seg.href)}" target="_blank" rel="noopener noreferrer" style="background:${seg.color};" data-seg-index="${i}">
       <span class="seg-state">${escapeHtml(seg.stateName)}</span>
-      <span class="seg-pct">${seg.leadLabel}</span>
       <span class="seg-party">${seg.leadParty}</span>
+      <span class="seg-pct">${seg.leadLabelNarrow}</span>
       ${seg.showIndependentMark ? '<span class="ind-mark ind-mark-v" role="img" aria-label="Independent polling above 10%">&#42;</span>' : ''}
       ${seg.showPendingMark ? '<span class="pending-mark-v pending-badge" title="Primary not yet decided">?</span>' : ''}
     </a>`;

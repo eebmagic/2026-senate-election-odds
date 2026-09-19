@@ -185,7 +185,9 @@
      across rows regardless of name length -- the pct/party that follow then
      land in the same spot on every row too. */
   .seg-narrow .seg-state { font-size: 10px; flex: 0 0 92px; text-align: right; white-space: nowrap; }
-  .seg-narrow .seg-pct { flex: 0 0 20px; text-align: right; }
+  /* Wide enough for "100.0%", the longest value this ever renders, so every
+     row's pct box is the same fixed width and right-aligns consistently. */
+  .seg-narrow .seg-pct { flex: 0 0 36px; text-align: right; white-space: nowrap; }
   .pending-badge { display: inline-flex; align-items: center; justify-content: center; width: 12px; height: 12px; border-radius: 50%; background: #faf8f4; border: 1.5px solid #211f1c; color: #211f1c; font-size: 9px; font-weight: 800; line-height: 1; pointer-events: none; }
   .ind-mark-v { position: absolute; top: 50%; left: 7px; transform: translateY(-24%); }
   .pending-mark-v { position: absolute; top: 50%; right: 4px; transform: translateY(-50%); }
