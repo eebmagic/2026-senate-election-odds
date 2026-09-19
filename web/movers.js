@@ -31,8 +31,10 @@ const MAX_ROWS = 10;
 // Below this, a move is noise (e.g. price rounding) rather than a real swing
 // -- a percentage-point floor, checked before the relative ranking below, so
 // a rounding blip on a tiny base (e.g. 0.1% -> 0.6%) can't rank as a "500%
-// move".
-const MIN_DELTA_PP = 0.5;
+// move". Kept low (rather than the old 0.5pp) since prev/now now render to
+// one decimal place -- see rowHtml -- so a real tenth-of-a-point move is
+// visible instead of looking like a false "no change".
+const MIN_DELTA_PP = 0.1;
 
 const TABLES = [
   { daysAgo: 1, bodyId: 'movers-today-body', rowsId: 'movers-today-rows', emptyId: 'movers-today-empty', vsId: 'movers-today-vs' },
@@ -121,9 +123,9 @@ function rowHtml({ race, party, prevProb, currProb, deltaPct }) {
       <span class="mover-badge ${cls}">${party}</span>
       <span class="mover-name ${cls}">${name}</span>
     </div>
-    <div class="mover-prev">${Math.round(prevProb * 100)}%</div>
+    <div class="mover-prev">${(prevProb * 100).toFixed(1)}%</div>
     <div class="mover-arrow">&rarr;</div>
-    <div class="mover-now">${Math.round(currProb * 100)}%</div>
+    <div class="mover-now">${(currProb * 100).toFixed(1)}%</div>
     <div class="mover-delta ${deltaCls}">${sign}${Math.abs(deltaPct).toFixed(1)}%</div>
   </${tag}>`;
 }
