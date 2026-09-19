@@ -62,13 +62,27 @@ function formatDateLabel(dateStr) {
     .toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
 }
 
-// "YYYY-MM-DD" -> "Thu, Sep 17" -- used for the per-table "changes since"
-// subtitle, where the day of the week disambiguates "yesterday"/"7 days
-// ago" without the reader having to do date math against today.
+// "YYYY-MM-DD" -> "Thursday, Sep 17" -- used for the per-table "changes
+// since" subtitle, where the day of the week disambiguates "yesterday"/
+// "7 days ago" without the reader having to do date math against today.
 function formatDateWithWeekday(dateStr) {
   const [y, m, d] = dateStr.split('-').map(Number);
   return new Date(Date.UTC(y, m - 1, d))
-    .toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', timeZone: 'UTC' });
+    .toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric', timeZone: 'UTC' });
+}
+
+// ISO 8601 UTC timestamp -> "Sep 18, 2026, 9:01 PM EDT" -- Eastern time
+// (EST/EDT, following DST automatically) rather than the UTC the timestamp
+// arrives in, since that's the audience this page is built for.
+function formatFetchedAt(iso) {
+  const parts = Object.fromEntries(
+    new Intl.DateTimeFormat('en-US', {
+      month: 'short', day: 'numeric', year: 'numeric',
+      hour: 'numeric', minute: '2-digit', timeZoneName: 'short',
+      timeZone: 'America/New_York'
+    }).formatToParts(new Date(iso)).map(p => [p.type, p.value])
+  );
+  return `${parts.month} ${parts.day}, ${parts.year}, ${parts.hour}:${parts.minute} ${parts.dayPeriod} ${parts.timeZoneName}`;
 }
 
 // The entry in `days` with the latest date at or before `targetDate`
@@ -180,10 +194,7 @@ export async function renderMovers(data) {
 
     const snapshotLine = document.getElementById('movers-snapshot-line');
     if (snapshotLine) {
-      const time = new Date(data.fetchedAt).toLocaleTimeString('en-US', {
-        hour: 'numeric', minute: '2-digit', timeZone: 'UTC'
-      });
-      snapshotLine.textContent = `Snapshot taken ${formatDateLabel(currentDate)}, ${data.fetchedAt.slice(0, 4)} ${time} UTC.`;
+      snapshotLine.textContent = `Snapshot taken ${formatFetchedAt(data.fetchedAt)}.`;
     }
 
     for (const t of TABLES) {
