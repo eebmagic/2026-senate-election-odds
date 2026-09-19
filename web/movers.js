@@ -28,8 +28,13 @@ const SNAPSHOT_INDEX_URL = 'https://election-data.ebolton.site/snapshot-index.js
 const SNAPSHOT_BASE_URL = 'https://election-data.ebolton.site/';
 
 const MAX_ROWS = 10;
-// Below this, a move is noise (e.g. price rounding) rather than a real swing.
-const MIN_DELTA_PP = 0.5;
+// Below this, a move is noise (e.g. price rounding) rather than a real swing
+// -- a percentage-point floor, checked before the relative ranking below, so
+// a rounding blip on a tiny base (e.g. 0.1% -> 0.6%) can't rank as a "500%
+// move". Kept low (rather than the old 0.5pp) since prev/now now render to
+// one decimal place -- see rowHtml -- so a real tenth-of-a-point move is
+// visible instead of looking like a false "no change".
+const MIN_DELTA_PP = 0.1;
 
 const TABLES = [
   { daysAgo: 1, bodyId: 'movers-today-body', rowsId: 'movers-today-rows', emptyId: 'movers-today-empty', vsId: 'movers-today-vs' },
@@ -70,11 +75,16 @@ function pickDayAtOrBefore(days, targetDate, excludeKey) {
   return best;
 }
 
-// Change is the CURRENT leader's own win probability, now vs. the comparison
-// snapshot -- not a Democratic-probability delta -- so "the leader gained/
-// slipped" always means exactly what it says, matching the mock's legend.
-// Independent leaders aren't tracked (this only ever compares demProbability
-// vs. repProbability, no otherTickers), so only D/R ever appear here.
+// "Change" ranks by the CURRENT leader's own win probability move (whichever
+// party leads today, its probability now vs. at the comparison snapshot)
+// relative to how far it had to move, not the raw percentage-point delta --
+// so a 49% -> 52% swing (toward a toss-up) outranks a 100% -> 95% one (still
+// a lock either way), even though the latter is the bigger raw move. Rows
+// under 0.5pp of raw movement are dropped as noise first; a comparison
+// starting at exactly 0% has no defined ratio and is dropped too (it can't
+// happen in practice for a party that's currently leading). Independent
+// leaders aren't tracked (this only ever compares demProbability vs.
+// repProbability, no otherTickers), so only D/R ever appear here.
 function computeMovers(currentRaces, previousRaces) {
   const prevByState = new Map(previousRaces.map(r => [r.state, r]));
   const movers = [];
@@ -87,14 +97,16 @@ function computeMovers(currentRaces, previousRaces) {
     const currProb = demLeads ? race.demProbability : race.repProbability;
     const deltaPp = (currProb - prevProb) * 100;
     if (Math.abs(deltaPp) < MIN_DELTA_PP) continue;
-    movers.push({ race, party, prevProb, currProb, deltaPp });
+    if (prevProb <= 0) continue;
+    const deltaPct = (deltaPp / (prevProb * 100)) * 100;
+    movers.push({ race, party, prevProb, currProb, deltaPct });
   }
-  movers.sort((a, b) => Math.abs(b.deltaPp) - Math.abs(a.deltaPp));
+  movers.sort((a, b) => Math.abs(b.deltaPct) - Math.abs(a.deltaPct));
   return movers.slice(0, MAX_ROWS);
 }
 
-function rowHtml({ race, party, prevProb, currProb, deltaPp }) {
-  const gained = deltaPp > 0;
+function rowHtml({ race, party, prevProb, currProb, deltaPct }) {
+  const gained = deltaPct > 0;
   const cls = party === 'D' ? 'dem' : 'rep';
   const deltaCls = gained ? 'up' : 'down';
   const sign = gained ? '+' : '−';
@@ -111,10 +123,10 @@ function rowHtml({ race, party, prevProb, currProb, deltaPp }) {
       <span class="mover-badge ${cls}">${party}</span>
       <span class="mover-name ${cls}">${name}</span>
     </div>
-    <div class="mover-prev">${Math.round(prevProb * 100)}%</div>
+    <div class="mover-prev">${(prevProb * 100).toFixed(1)}%</div>
     <div class="mover-arrow">&rarr;</div>
-    <div class="mover-now">${Math.round(currProb * 100)}%</div>
-    <div class="mover-delta ${deltaCls}">${sign}${Math.abs(deltaPp).toFixed(1)}</div>
+    <div class="mover-now">${(currProb * 100).toFixed(1)}%</div>
+    <div class="mover-delta ${deltaCls}">${sign}${Math.abs(deltaPct).toFixed(1)}%</div>
   </${tag}>`;
 }
 
