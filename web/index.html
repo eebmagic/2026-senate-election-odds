@@ -343,9 +343,11 @@
     .movers-col-header div:nth-child(5) { text-align: center; }
   }
 
-  /* Repo link, pinned to the viewport's top-right corner (outside #page's
-     centered column). Muted ink by default, full ink on hover. */
-  .gh-link { position: fixed; top: 16px; right: 16px; z-index: 10; display: flex; color: #5b574f; transition: color 0.15s; }
+  /* Repo link, pinned to the page's top-right corner (outside #page's
+     centered column). Scrolls away with the page like a normal element
+     rather than staying fixed to the viewport. Muted ink by default, full
+     ink on hover. */
+  .gh-link { position: absolute; top: 16px; right: 16px; z-index: 10; display: flex; color: #5b574f; transition: color 0.15s; }
   .gh-link:hover { color: #211f1c; }
   .gh-link svg { display: block; width: 28px; height: 28px; fill: currentColor; }
   @media (max-width: 719px) { .gh-link { top: 12px; right: 12px; } .gh-link svg { width: 24px; height: 24px; } }
