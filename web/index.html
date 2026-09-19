@@ -268,14 +268,20 @@
   .movers-table-header { display: flex; align-items: baseline; gap: 8px; margin-bottom: 2px; flex-wrap: wrap; }
   .movers-table-title { font-size: 13px; font-weight: 700; }
   .movers-table-subtitle { font-size: 11px; font-weight: 400; color: #5b574f; }
-  /* 3rd column is 80px (vs. 40px for the other value columns) so the
-     7-day table's "7 days ago" header fits on one line -- see the mobile
-     override below, which shrinks it back down and allows wrapping since
-     there isn't room for the full label at that width. */
-  .movers-col-header, .mover-row { display: grid; grid-template-columns: 28px 1fr 80px 20px 40px 52px; gap: 8px; }
+  /* 1st column is 104px -- wide enough for the longest state name in play
+     ("South Carolina"/"North Carolina") on one line; full names are shown
+     always (not abbreviated to a 2-letter code), including on mobile below.
+     3rd column is 80px (vs. 40px for the other value columns) so the 7-day
+     table's "7 days ago" header fits on one line -- see the mobile override
+     below, which shrinks it back down and allows wrapping since there isn't
+     room for the full label at that width. */
+  .movers-col-header, .mover-row { display: grid; grid-template-columns: 104px 1fr 80px 20px 40px 52px; gap: 8px; }
   .movers-col-header { align-items: center; font-size: 10.5px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: #5b574f; padding: 0 0 7px 8px; white-space: nowrap; }
   .movers-col-header div:nth-child(3) { text-align: right; }
   .movers-col-header div:nth-child(5) { text-align: left; }
+  /* Full label on desktop; the mobile override below swaps to short-label --
+     both columns are too narrow there to fit "Yesterday"/"7 days ago". */
+  .movers-col-header .short-label { display: none; }
   .movers-col-header div:nth-child(6) { text-align: center; }
   /* min-height is set inline (movers.js) so the two tables match height on
      desktop even when one has fewer notable movers than the other; the
@@ -288,7 +294,7 @@
   .mover-row { align-items: stretch; padding-left: 8px; border-bottom: 1px solid #e2ded5; border-left: 3px solid transparent; text-decoration: none; color: inherit; }
   .mover-row.dem { border-left-color: #0044c9; background: rgba(0, 68, 201, 0.055); }
   .mover-row.rep { border-left-color: #d71f27; background: rgba(215, 31, 39, 0.055); }
-  .mover-state { display: flex; align-items: center; padding: 8px 0; font-size: 12.5px; font-weight: 700; }
+  .mover-state { display: flex; align-items: center; padding: 8px 0; font-size: 12.5px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .mover-candidate { display: flex; align-items: center; gap: 6px; min-width: 0; padding: 8px 0; }
   .mover-badge { flex: none; width: 16px; height: 16px; border-radius: 3px; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 800; color: #faf8f4; }
   .mover-badge.dem { background: #0044c9; }
@@ -313,9 +319,16 @@
   @media (max-width: 719px) {
     .movers-tables { grid-template-columns: 1fr; gap: 24px; }
     .movers-body { min-height: 0 !important; }
-    .movers-col-header, .mover-row { grid-template-columns: 24px 1fr 40px 14px 40px 46px; gap: 6px; }
-    /* No room for "7 days ago" at this width -- back to wrapping. */
-    .movers-col-header { white-space: normal; }
+    /* State names stay full-word even here (a stacked table has more width
+       to itself than half of a desktop pair does) -- the other, purely
+       numeric columns shrink further to make room and avoid overflowing
+       the ~326px content width at this breakpoint. */
+    .movers-col-header, .mover-row { grid-template-columns: 98px 1fr 32px 10px 32px 40px; gap: 6px; }
+    /* No room for "Yesterday"/"7 days ago" at this width -- swap to the
+       short label instead (still one line, no more wrapping/overlap). */
+    .movers-col-header { white-space: nowrap; }
+    .movers-col-header .full-label { display: none; }
+    .movers-col-header .short-label { display: inline; }
   }
 
   /* Repo link, pinned to the viewport's top-right corner (outside #page's
@@ -403,9 +416,9 @@
             <span class="movers-table-subtitle" id="movers-today-vs"></span>
           </div>
           <div class="movers-col-header">
-            <div>St</div>
-            <div>Leading candidate</div>
-            <div>Yesterday</div>
+            <div>State</div>
+            <div>Candidate</div>
+            <div><span class="full-label">Yesterday</span><span class="short-label">Prior</span></div>
             <div></div>
             <div>Now</div>
             <div>Change</div>
@@ -421,9 +434,9 @@
             <span class="movers-table-subtitle" id="movers-week-vs"></span>
           </div>
           <div class="movers-col-header">
-            <div>St</div>
-            <div>Leading candidate</div>
-            <div>7 days ago</div>
+            <div>State</div>
+            <div>Candidate</div>
+            <div><span class="full-label">7 days ago</span><span class="short-label">7d ago</span></div>
             <div></div>
             <div>Now</div>
             <div>Change</div>

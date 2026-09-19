@@ -27,7 +27,7 @@ import { STATE_NAMES, escapeHtml } from './senate-shared.js';
 const SNAPSHOT_INDEX_URL = 'https://election-data.ebolton.site/snapshot-index.json';
 const SNAPSHOT_BASE_URL = 'https://election-data.ebolton.site/';
 
-const MAX_ROWS = 8;
+const MAX_ROWS = 10;
 // Below this, a move is noise (e.g. price rounding) rather than a real swing.
 const MIN_DELTA_PP = 0.5;
 
@@ -98,7 +98,6 @@ function rowHtml({ race, party, prevProb, currProb, deltaPp }) {
   const cls = party === 'D' ? 'dem' : 'rep';
   const deltaCls = gained ? 'up' : 'down';
   const sign = gained ? '+' : '−';
-  const stateCode = escapeHtml(race.state);
   const stateName = escapeHtml(STATE_NAMES[race.state] || race.state);
   const name = escapeHtml((party === 'D' ? race.demCandidate : race.repCandidate) || party);
   const tag = race.kalshiUrl ? 'a' : 'div';
@@ -106,7 +105,7 @@ function rowHtml({ race, party, prevProb, currProb, deltaPp }) {
     ? ` href="${escapeHtml(race.kalshiUrl)}" target="_blank" rel="noopener noreferrer"`
     : '';
   return `<${tag} class="mover-row ${cls}"${linkAttrs}>
-    <div class="mover-state" title="${stateName}">${stateCode}</div>
+    <div class="mover-state">${stateName}</div>
     <div class="mover-candidate">
       <span class="mover-badge ${cls}">${party}</span>
       <span class="mover-name ${cls}">${name}</span>
