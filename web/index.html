@@ -270,6 +270,7 @@
   .movers-header { display: flex; justify-content: space-between; align-items: baseline; gap: 16px; flex-wrap: wrap; }
   #movers-snapshot-line { margin: 2px 0 20px; }
   .movers-tables { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; }
+  .movers-footnote { margin-top: 20px; }
   .movers-table-header { display: flex; align-items: baseline; gap: 8px; margin-bottom: 18px; flex-wrap: wrap; }
   .movers-table-title { font-size: 13px; font-weight: 700; }
   .movers-table-subtitle { font-size: 11px; font-weight: 400; color: #5b574f; }
@@ -425,7 +426,6 @@
     <div class="movers-section" id="movers-section" style="display: none;">
       <div class="movers-header">
         <div class="section-heading">Biggest movers</div>
-        <div class="caption">Change in the leading candidate's win probability, in percentage points — ranked by size of the move relative to where it started, e.g. 49%&rarr;52% outranks 100%&rarr;95%</div>
       </div>
       <div class="caption" id="movers-snapshot-line"></div>
       <div class="movers-tables">
@@ -466,6 +466,7 @@
           </div>
         </div>
       </div>
+      <div class="caption movers-footnote">Change in the leading candidate's win probability, in percentage points — ranked by size of the move relative to where it started, e.g. 49%&rarr;52% outranks 100%&rarr;95%</div>
     </div>
 
   </div>

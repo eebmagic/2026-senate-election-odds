@@ -62,6 +62,15 @@ function formatDateLabel(dateStr) {
     .toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
 }
 
+// "YYYY-MM-DD" -> "Thu, Sep 17" -- used for the per-table "changes since"
+// subtitle, where the day of the week disambiguates "yesterday"/"7 days
+// ago" without the reader having to do date math against today.
+function formatDateWithWeekday(dateStr) {
+  const [y, m, d] = dateStr.split('-').map(Number);
+  return new Date(Date.UTC(y, m - 1, d))
+    .toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', timeZone: 'UTC' });
+}
+
 // The entry in `days` with the latest date at or before `targetDate`
 // (excluding `excludeKey`, the currently-displayed snapshot), or null if
 // history doesn't reach back that far yet. Date strings are zero-padded
@@ -186,7 +195,7 @@ export async function renderMovers(data) {
         renderTable(t.rowsId, t.emptyId, [], 'Not enough history yet.');
         continue;
       }
-      if (vsEl) vsEl.textContent = `changes since ${formatDateLabel(comparisonEntry.date)}`;
+      if (vsEl) vsEl.textContent = `changes since ${formatDateWithWeekday(comparisonEntry.date)}`;
       try {
         const snapshotUrl = SNAPSHOT_BASE_URL
           + comparisonEntry.key.split('/').map(encodeURIComponent).join('/');
