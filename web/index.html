@@ -324,8 +324,10 @@
     .movers-body { min-height: 0 !important; }
     /* State is the 2-letter code here (not the full name) to leave room for
        the candidate column at this width; desktop always shows the full
-       name -- see .mover-state above. */
-    .movers-col-header, .mover-row { grid-template-columns: 28px 1fr 40px 14px 40px 46px; gap: 6px; }
+       name -- see .mover-state above. 1st column is 36px, not the data's
+       own 2-char width, because the header always reads "State" in full
+       (never abbreviated) and needs to fit that. */
+    .movers-col-header, .mover-row { grid-template-columns: 36px 1fr 40px 14px 40px 46px; gap: 6px; }
     /* No room for "Yesterday"/"7 days ago" at this width -- swap to the
        short label instead (still one line, no more wrapping/overlap). */
     .movers-col-header { white-space: nowrap; }
@@ -426,7 +428,7 @@
             <span class="movers-table-subtitle" id="movers-today-vs"></span>
           </div>
           <div class="movers-col-header">
-            <div><span class="full-label">State</span><span class="short-label">St</span></div>
+            <div>State</div>
             <div>Candidate</div>
             <div><span class="full-label">Yesterday</span><span class="short-label">Prior</span></div>
             <div></div>
@@ -444,7 +446,7 @@
             <span class="movers-table-subtitle" id="movers-week-vs"></span>
           </div>
           <div class="movers-col-header">
-            <div><span class="full-label">State</span><span class="short-label">St</span></div>
+            <div>State</div>
             <div>Candidate</div>
             <div><span class="full-label">7 days ago</span><span class="short-label">7d ago</span></div>
             <div></div>
