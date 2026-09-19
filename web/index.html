@@ -89,6 +89,13 @@
   .gauge-change-badge { flex: none; display: inline-flex; align-items: center; justify-content: center; width: 14px; height: 14px; border-radius: 3px; font-size: 9px; font-weight: 800; color: #faf8f4; }
   .gauge-change-badge.dem { background: #0044c9; }
   .gauge-change-badge.rep { background: #d71f27; }
+  /* Right-aligned (flex-end) reads as crowded once it wraps to its own line
+     at narrow widths -- left-align it there instead, matching the title's
+     edge, and drop the margin-left: auto that was only pushing it away from
+     the title on the wider single-line layout. */
+  @media (max-width: 719px) {
+    .gauge-changes { justify-content: flex-start; margin-left: 0; }
+  }
 
   /* Seat spectrum */
   .spectrum-section { margin-bottom: 52px; }
