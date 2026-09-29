@@ -435,7 +435,7 @@ function segHtmlWide(seg, i) {
         <span class="seg-party">${seg.leadParty}</span>
         <span class="seg-pct">${seg.leadLabel}</span>
       </span>
-      ${seg.showIndependentMark ? '<span class="ind-mark ind-mark-h" role="img" aria-label="Independent polling above 10%">&#42;</span>' : ''}
+      ${seg.showIndependentMark ? '<span class="ind-mark ind-mark-h" role="img" aria-label="Independent or third-party candidate ahead of a major party">&#42;</span>' : ''}
       ${seg.showPendingMark ? '<span class="pending-mark-h pending-badge" title="Primary not yet decided">?</span>' : ''}
     </a>`;
 }
@@ -446,7 +446,7 @@ function segHtmlNarrow(seg, i) {
       <span class="seg-state">${escapeHtml(seg.stateName)}</span>
       <span class="seg-party">${seg.leadParty}</span>
       <span class="seg-pct">${seg.leadLabelNarrow}</span>
-      ${seg.showIndependentMark ? '<span class="ind-mark ind-mark-v" role="img" aria-label="Independent polling above 10%">&#42;</span>' : ''}
+      ${seg.showIndependentMark ? '<span class="ind-mark ind-mark-v" role="img" aria-label="Independent or third-party candidate ahead of a major party">&#42;</span>' : ''}
       ${seg.showPendingMark ? '<span class="pending-mark-v pending-badge" title="Primary not yet decided">?</span>' : ''}
     </a>`;
 }

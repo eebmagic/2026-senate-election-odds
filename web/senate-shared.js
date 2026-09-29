@@ -171,8 +171,14 @@ export function upcomingPrimaryLabel(state, fetchedAt) {
   return primary.toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
 }
 
+// True when a non-major-party candidate is ahead of the weaker of the two
+// major-party candidates -- e.g. Nebraska's Osborn (I) beats a token
+// Democrat while still trailing the Republican. A fixed probability cutoff
+// would miss that case, which is the actual signal worth flagging.
 export function isMaterialIndependent(race) {
-  return !!(race.otherTickers && race.otherTickers.some(t => t.probability > 0.10));
+  if (!race.otherTickers || !race.otherTickers.length) return false;
+  const weaker = Math.min(race.demProbability, race.repProbability);
+  return race.otherTickers.some(t => (t.probability || 0) > weaker);
 }
 
 // Total probability held by non-major-party candidates (prices sum to 1.0).
